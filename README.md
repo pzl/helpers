@@ -3,7 +3,7 @@ This is a collection of various helper scripts I'd been keeping in my ~/bin fold
 Or, if you're someone who likes code-reviewing some off-the-cuff bash, then this is for you!! Didn't reach for the best practices of functions or `local` and `readonly` too much, but I think I avoided the worst of bash, too.
 
 2step
-=====
+-----
 
 If you're like me and don't have your phone constantly on you, or don't want a lot of 6-digit texts from Google, this script may be for you. It removes the phone from the "2-Step" authentication process, because when you use the Time-based One-Time Password (TOTP) method offered by things like the Google Authenticator app (whichever method that doesn't send you an SMS) it's not actually tied to your phone. You can easily generate TOTPs from your computer (or by hand if you're **really** quick at math). This script will do that. 
 
@@ -11,33 +11,33 @@ During the 2-step setup process, choose the non-SMS option and you will be prese
 
 
 bkup
-====
+----
 
 Incomplete and non-functioning script I was going to use to backup my hard drives using JSON config. Manual config + cron won out in the end.
 
 gdate
-=====
+----
 
 Incomplete and non-functioning script I was using to correct git commit timestamps
 
 ios-bkup
-========
+--------
 
 basically just a long alias to check that proper HDs are mounted first, and run `idevicebackup2` with the right flags
 
 lxc-setup
-=========
+---------
 
 Setup script I run before starting up an LXC container on an external drive. Checks to make sure drive is mounted with `dev` option, and sets up bridged networking.
 
 
 mkgif
-=====
+-----
 
 Hopefully a more publicly useful script: converts a video file, using specified timestamps, into a gif automatically. It will even use youtube videos as video sources if you give it a URL instead of a filename. It's not /r/HighQualityGifs caliber output, but decent. Quality improvement suggestions are welcome (using imagemagick currently).
 
 mkmov
-=====
+-----
 
 Another hopefully useful script to people: converts a bunch of still frames into a (selectable quality) movie. This time, the output can be rather stellar if you have the time and resources to wait. Given a folder full of files that may look like "frame_0001.jpg" through "frame_0860.jpg" in the `~/images` directory, the command will look like this: 
 
@@ -55,43 +55,43 @@ Now, our still frames were taken in 1080p, but we want our video to only be 720p
 Note that the higher the quality setting, the longer it will take to create the movie. This setting has a profound effect on the time taken to complete.
 
 mnt
-===
+---
 
 basically an alias script because I can never remember the flags and order to pass to `mount`, especially when assigning user rights flags on ntfs.
 
 notif-fix
-=========
+---------
 
 I think this had something to do with either notify-send or Chrome desktop notifications appearing in the wrong corner of my desktop, and I was trying to move them back. Not sure.
 
 sc
-=====
+---
 
 This was an old script I used to "Set-Color" of my terminal, which didn't support an API for changing the theme/colors. It used the ANSI escape codes for changing the colors, and allowed putting presets in a colorconfig file.
 
 sub
-=====
+---
 
 A small wrapper around sublime text to open normally when called the first time, but to spawn new windows when called anytime after that. The default sublime behavior when being called when already open is to just highlight the open window, instead of opening a new window.
 
 tiling_rules
-=============
+------------
 
 This is just the behavioral rules for my window manager; which windows should float vs. tile by default.
 
 webcam
-=======
+------
 
 Small mplayer wrapper to view/stream a video source (e.g. liveview a webcam) and to optionally write it to stillframes for a slow-updating feed.
 
 winfo
-======
+-----
 
 Call this script then click on an X window to view some of it's properties (class, instance, title, type, state)
 
 
 License
--------
+=======
 
 All code in this repository is licensed under the MIT license (see `LICENSE` file) and  
 Copyright (c) 2015 Dan Panzarella
