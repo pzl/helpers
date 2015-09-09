@@ -44,14 +44,18 @@ class TOTP(object):
     digits=6 #number of integers in output code
 
     @property
-    def foo(self):
-        return self._foo
-    
+    def secret(self):
+        return self._secret
 
+    @secret.setter
+    def secret(self, secret):
+        self._raw_secret = secret
+        self._secret = base64.b32decode(secret,casefold=True)
+    
+    
     def __init__(self, secret):
         super(TOTP, self).__init__()
         self.secret = secret
-        self.b64_secret = base64.b32decode(secret,casefold=True)
 
     def _timecode(self):
         #get the time portion of *T*OTP
@@ -72,7 +76,7 @@ class TOTP(object):
 
 
         hmac_hash = hmac.new(
-            self.b64_secret,
+            self.secret,
             bytestring,
             self.digest
         ).digest()
