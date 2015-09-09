@@ -1,0 +1,153 @@
+#!/usr/bin/env python2
+# This script is designed to make automated backups based on
+# a JSON configuration file. It is unfinished and untested
+#
+# Copyright (c) 2014 Dan Panzarella
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE. 
+
+
+
+import json
+from os.path import expanduser, join
+import subprocess
+import re
+
+import sys
+sys.stderr.write("This script is incomplete and may do nothing, or may do unintended things.\n")
+
+
+def config():
+    try:
+        cf = open(join(expanduser("~"),".config/backup/backup.json"))
+    except IOError:
+        print("cannot open config file!")
+        return 1
+
+    try:
+        j = json.load(cf)
+    except:
+        print("could not parse config file. Is it valid JSON?")
+        return 1
+
+    cf.close()
+
+    return j
+
+
+def resolve_device(flag,arg):
+    r = subprocess.Popen(["blkid",flag,arg],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    out, err = r.communicate()
+    ret = r.returncode
+
+    out = out.strip()
+    err = err.strip()
+
+    if ret != 0:
+        print("error resolving device %s" % arg)
+        return 1
+
+    p = subprocess.Popen(["grep",out,"/proc/mounts"],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+    o,e = p.communicate()
+    ret = p.returncode
+
+    o = o.strip()
+    e = e.strip()
+
+    if ret != 0:
+        print("error getting mount point for device %s" % out)
+        return 1
+
+    m = re.match(r"^%s\s(.*)\s\w+\s[\w,=]+\s\d+\s\d+$" % out.replace("/","\/"),o)
+    if not m:
+        print "could not parse mount point"
+        return 1
+
+    return m.group(1)
+
+
+def main():
+    c = config()
+    if c == 1:
+        return 1
+
+    for obj in c:
+        if "UUID" in obj["source"]["machine"]:
+            #print("copying from %s"%obj["source"]["machine"]["UUID"])
+            o = resolve_device("-U",obj["source"]["machine"]["UUID"])
+        elif "LABEL" in obj["source"]["machine"]:
+            #print("copying from %s"%obj["source"]["machine"]["LABEL"])
+            o = resolve_device("-L",obj["source"]["machine"]["LABEL"])
+        else:
+            print("source invalid")
+            continue
+
+        if o == 1:
+            print("could not resolve source device")
+            continue
+
+        for dest in obj["dests"]:
+            if "UUID" in dest["machine"]:
+                #print("copying to %s"%dest["machine"]["UUID"])
+                d = resolve_device("-U",dest["machine"]["UUID"])
+            elif "LABEL" in dest["machine"]:
+                #print("copying to %s"%dest["machine"]["LABEL"])
+                d = resolve_device("-L",dest["machine"]["LABEL"])
+            else:
+                print("destination invalid")
+                continue
+
+            if d == 1:
+                print("could not resolve destination device")
+                continue
+
+"""
+
+
+#rsync -nvEhiaxaAXzz --delete /source/from /source/to/
+
+while getopts :hdf:t: opt; do
+    case $opt in
+        h)
+            echo "use: do stuff"
+            exit 1
+            ;;
+        d)
+            echo "dry run"
+            ;;
+        f)
+            echo "copying from $OPTARG"
+            ;;
+        t)
+            echo "to $OPTARG"
+            ;;
+        \?)
+            echo "Invalid arg: -$OPTARG" >&2
+            exit 1
+            ;;
+        :)
+            echo "-$OPTARG requires an argument" >&2
+            exit 1
+            ;;
+    esac
+done
+"""
+
+if __name__ == '__main__':
+    main()

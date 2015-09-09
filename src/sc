@@ -1,0 +1,107 @@
+#!/usr/bin/env python
+# Really convoluted script to change terminal color themes while terminal is running
+# using ANSI escape codes. If your terminal has an API to do this, that would be better
+#
+# Copyright (c) 2014 Dan Panzarella
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE. 
+
+
+from __future__ import print_function
+import sys
+import json
+import random
+import time
+
+config = open('~/.config/colorconfig')
+js = json.load(config)
+config.close()
+
+esc="\033]"
+bel="\007"
+osc="{esc}{{Ps}};{{Pt}}{bel}".format(esc=esc,bel=bel)
+
+
+
+def runner(d):
+	for key,val in d.iteritems():
+		#print('-- seeing %s:%s -- ' % (key,val))
+		if isinstance(val,dict):
+			#print(' --!!!-- going recursive! --!!!-- ')
+			runner(val)
+		elif isinstance(val,list):
+			#print(' --## have a list ##--')
+			for idx,v in enumerate(val):
+				print(
+						osc.format(
+								Ps="4",
+								Pt="{};{}".format(
+												(js['osc'][key]+idx*8),
+												v
+												)
+								),
+						end=''
+					)
+		else:
+			ps=js['osc'][key]
+			if isinstance(ps,list):
+				for x in ps:
+					print(osc.format(Ps=x, Pt=val), end='')
+			else:
+				print(osc.format(Ps=ps, Pt=val), end='')
+
+def gencolor():
+	return '#%06x' % random.randint(0,256**3-1)
+
+def party():
+	while True:
+		colors=osc.format(Ps=10,Pt=gencolor())
+		bg='[%0d]%s' % (random.randint(0,99),gencolor())
+
+		colors+=osc.format(Ps=11,Pt=bg)
+		colors+=osc.format(Ps=708,Pt=bg)
+		colors+=osc.format(Ps=12,Pt=gencolor())
+		for i in range(16):
+			colors+=osc.format(Ps='4;%d' % i,Pt=gencolor())
+		print(colors,end='')
+		time.sleep(0.05)
+
+if __name__ == '__main__':
+	theme = 'default'
+	if len(sys.argv) > 1:
+		if sys.argv[1].lower() == 'list':
+			print(', '.join(js['themes'].keys()))
+			exit(0)
+		elif sys.argv[1].lower() == 'random':
+			theme=random.choice(js['themes'].keys())
+		elif sys.argv[1].lower() == 'party':
+			party()
+			exit(0)
+		else:
+			lookup=False
+			theme=sys.argv[1]
+			for x in js['themes'].keys():
+				if theme.lower() == x.lower():
+					lookup=True
+					theme=x
+			if not lookup:
+				print("Couldn't find theme of that name")
+				exit(1)
+	runner(js['themes'][theme])
+#print(js)

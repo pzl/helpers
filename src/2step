@@ -1,0 +1,114 @@
+#!/usr/bin/env python2
+# 2-step authentication code generator, given the time-based keys.
+# Functions similarly to Google Authenticator
+#
+# Copyright (c) 2014 Dan Panzarella
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE. 
+
+import sys
+import os
+import hmac
+import base64
+import hashlib
+import datetime
+import time
+
+usage = """
+    2step [OPTIONS] PROVIDER
+    OPTIONS:
+"""
+
+
+class TOTP(object):
+    """docstring for TOTP"""
+    
+    interval=30 #seconds
+    digest=hashlib.sha1
+    digits=6 #number of integers in output code
+
+    @property
+    def foo(self):
+        return self._foo
+    
+
+    def __init__(self, secret):
+        super(TOTP, self).__init__()
+        self.secret = secret
+        self.b64_secret = base64.b32decode(secret,casefold=True)
+
+    def _timecode(self):
+        #get the time portion of *T*OTP
+        now = datetime.datetime.now()
+        i = time.mktime(now.timetuple())
+        timecode = int(i/self.interval)
+        return timecode
+        
+    def hash(self):
+        #get current time to base code on
+        timecode = self._timecode()
+
+        res = []
+        while timecode != 0:
+            res.append(chr(timecode & 0xFF))
+            timecode = timecode >> 8
+        bytestring=''.join(reversed(res)).rjust(8,'\0') #padding=8
+
+
+        hmac_hash = hmac.new(
+            self.b64_secret,
+            bytestring,
+            self.digest
+        ).digest()
+
+        offset=ord(hmac_hash[19]) & 0xF
+        code = ((ord(hmac_hash[offset]) & 0x7f) << 24 |
+            (ord(hmac_hash[offset + 1]) & 0xff) << 16 |
+            (ord(hmac_hash[offset + 2]) & 0xff) << 8  |
+            (ord(hmac_hash[offset + 3]) & 0xff))
+
+        code = code % 10 ** self.digits
+
+        print(str(code).zfill(self.digits))
+
+
+
+
+
+
+def main():
+    keys={}
+    with open(os.path.expanduser("~/.config/.2steps"),"r") as f:
+        for line in f.read().splitlines():
+            k,v = line.split('=')
+            keys[k.strip().strip('"')] = v.strip().strip('"')
+
+    if len(sys.argv) < 2:
+        sys.exit("Error: argument required (provider)" + usage)
+
+    if not sys.argv[1].strip() in keys:
+        sys.exit("No provider found: '{}'".format(sys.argv[1]))
+
+    totp = TOTP(keys[sys.argv[1].strip()])
+    totp.hash()
+
+
+if __name__ == '__main__':
+    main()
+    

@@ -1,0 +1,144 @@
+#!/bin/bash
+# convenience script for making animated gifs from 
+# youtube or other videos using ffmpeg, imagemagick and/or gifsicle
+#
+# Copyright (c) 2014 Dan Panzarella
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE. 
+
+
+help="Usage: `basename $0` [OPTIONS] SOURCE GIF_NAME
+    OPTIONS:
+        -h    help message
+        -s    gif size (default 480x270)
+        -t   start time (default 0:0:0)
+        -d   duration of video to convert (default 0:0:5)
+        -z   fuzz amount (default 2)
+"
+fuzz=2
+start_time="0:0:0"
+duration="0:0:5"
+size="480x270"
+#size="640x360"
+
+
+while getopts :hs:t:d:z: opt; do
+    case "$opt" in
+        h)
+            echo "$help"
+            exit 0
+            ;;
+        \?)
+            echo "$help"
+            echo "Invalid arg: -$OPTARG" >&2
+            exit 1
+            ;;
+        :)
+            echo "$help"
+            echo "-$OPTARG requires an argument" >&2
+            exit 1
+            ;;
+        s)
+            size="$OPTARG"
+            ;;
+        t)
+            start_time="$OPTARG"
+            ;;
+        d)
+            duration="$OPTARG"
+            ;;
+        z)
+            fuzz="$OPTARG"
+            ;;
+    esac
+done
+
+input=${@:$OPTIND:1}
+if [ -z "$input" ]; then
+    echo "Error: input source is required" >&2
+    echo "$help"
+    exit 1
+fi
+
+gif_out=${@:$OPTIND+1:1}
+if [ -z "$gif_out" ]; then
+    echo "Error: output gif filename is required" >&2
+    echo "$help"
+    exit 1
+fi
+
+
+if [ "${input:0:4}" == "http" ]; then
+    fn=$(youtube-dl --get-filename $input)
+    if [ -f "$fn" ]; then
+        echo "file exists, not redownloading"
+        input="$fn"
+    else
+        echo "downloading"
+        youtube-dl $input
+        if [ $? -ne 0 ]; then
+            echo "couldn't download video"
+            exit 1
+        fi
+        input="$fn"
+    fi
+fi
+
+if [ ! -e "$input" ]; then
+    echo "invalid source file" >&2
+    exit 1
+fi
+
+if ffmpeg -ss $start_time -i "$input" -t $duration -s $size -f image2 %03d.png; then
+    exit 1
+fi
+sxiv *.png &
+p="$!"
+echo -n "Review the images and enter the starting frame number: "
+read sframe
+if [ "$sframe" == "" ]; then
+    echo "empty frame, aborting"
+    exit 1
+fi
+echo -n "Enter the ending frame number: "
+read eframe
+if [ "$eframe" == "" ]; then
+    echo "empty frame, aborting"
+    exit 1
+fi
+kill "$p"
+frames=$(seq -f %03g.png $sframe $eframe)
+frameskip=$(seq -f %03g.png $sframe 2 $eframe)
+echo "selected frames: $sframe - $eframe"
+
+
+
+#add gimp processing here too
+convert +repage -fuzz ${fuzz}% -delay 4 -loop 0 $frames -layers OptimizePlus -layers OptimizeTransparency "$gif_out"
+#if [ $? -eq 0 ]; then
+    #sxiv "$gif_out" &
+#fi
+#gifsicle -O3 -k 256 -f $2 > $2.opt
+
+
+#try skip every other frame
+convert +repage -fuzz ${fuzz}% -delay 6 -loop 0 $frameskip -layers OptimizePlus -layers OptimizeTransparency "skip-$gif_out"
+#if [ $? -eq 0 ]; then
+    #sxiv "skip-$gif_out" &
+#fi

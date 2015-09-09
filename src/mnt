@@ -1,0 +1,93 @@
+#!/bin/bash
+# convenience script for automated drive mounting
+#
+# Copyright (c) 2014 Dan Panzarella
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE. 
+
+
+help="Usage: `basename $0` PARTITION DIRECTORY"
+
+nocreate=false
+
+while getopts :hn opt; do
+    case "$opt" in
+        h)
+            echo "$help"
+            exit 0
+            ;;
+        \?)
+            echo "$help"
+            echo "Invalid arg: -$OPTARG" >&2
+            exit 1
+            ;;
+        :)
+            echo "$help"
+            echo "-$OPTARG requires an argument" >&2
+            exit 1
+            ;;
+        n)
+            nocreate=true
+            ;;
+    esac
+done
+
+PART=${@:$OPTIND:1}
+DIR=${@:$OPTIND+1:1}
+
+domount(){
+    sudo chown 1000:1000 "$DIR"
+    case "$PARTTYPE" in
+        ntfs|ntfs-3g)
+            sudo mount -o uid=1000,gid=1000,dmask=027,fmask=137 -t ntfs-3g  "$PART" "$DIR"
+            ;;
+        *)
+            sudo mount -t "$PARTTYPE" "$PART" "$DIR"
+            ;;
+    esac
+}
+
+if [ ! -b "$PART" ]; then
+    echo "Error: '$PART' is not a valid block device"
+    echo "$help"
+    exit 1
+fi
+
+PARTTYPE=$(sudo blkid | grep "$PART" | grep -Po 'TYPE="\w+"' | sed -r 's/(TYPE|[="])//g')
+
+if [ -d "$DIR" ]; then
+    domount
+else
+    if $nocreate; then
+        echo "Error: '$DIR' does not already exist, and 'no create' flag was present"
+        exit 1
+    else
+        sudo mkdir "$DIR"
+        domount
+    fi
+
+fi
+
+#the following is the mnt script used in vbox
+#!/bin/bash
+#if ! mountpoint ~/ts > /dev/null 2>&1; then
+#   sudo mount -t vboxsf -o uid=1000,gid=1000 bsd-ts-core ~/ts
+#else
+#   echo "Already mounted"
+#fi
