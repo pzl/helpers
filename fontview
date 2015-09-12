@@ -1,0 +1,22 @@
+#!/bin/bash
+
+readonly fname="$1"
+
+font="$(xlsfonts | grep  "medium\|normal" | grep "iso10646" | grep "$fname" | tail -n 1)"
+
+if [ -z "$font" ]; then
+    #try again with looser parameters
+    font="$(xlsfonts | grep "medium\|normal" | grep "$fname" | tail -n 1)"
+
+    if [ -z "$font" ]; then
+        echo "Could not find font by name: $fname" >&2
+        exit 1
+    fi
+fi
+
+
+#colorize viewer
+#printf "xfd*Background: #002b36\n\
+#        xfd*Foreground: #839496\n" | xrdb -merge
+
+xfd -rows 19 -columns 24 -fn "$font"
