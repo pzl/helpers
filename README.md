@@ -15,6 +15,13 @@ bkup
 
 Incomplete and non-functioning script I was going to use to backup my hard drives using JSON config. Manual config + cron won out in the end.
 
+
+fontview
+--------
+
+A shorthand script for passing the name of an installed font, and viewing it's charmap (XLFD not XFT). Use like: `fontview terminus`
+
+
 gdate
 ----
 
@@ -24,6 +31,13 @@ ios-bkup
 --------
 
 basically just a long alias to check that proper HDs are mounted first, and run `idevicebackup2` with the right flags
+
+
+lock
+----
+
+Will lock your X11 session using i3lock, and using a blurred, pixelated, annotated, or other desktop view based on parameters
+
 
 lxc-setup
 ---------
@@ -58,6 +72,14 @@ mnt
 ---
 
 basically an alias script because I can never remember the flags and order to pass to `mount`, especially when assigning user rights flags on ntfs.
+
+
+pixelate_windows
+----------------
+
+Will pixelate your open X11 windows based on a screenshot of the current state. Produces an image where the background is untouched, windows are obscured. Based on py3lock.py by Airblader
+
+
 
 notif-fix
 ---------
