@@ -1,0 +1,81 @@
+#!/usr/bin/env python3
+# Pixelate only X windows from a current screenshot
+# based on py3lock.py by Airblader
+#
+# Copyright (c) 2015 Dan Panzarella
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE. 
+
+import sys
+import xcffib as xcb
+from xcffib.xproto import *
+from PIL import Image
+
+XCB_MAP_STATE_VIEWABLE = 2
+
+def xcb_fetch_windows():
+  """ Returns an array of rects of currently visible windows. """
+
+  x = xcb.connect()
+  root = x.get_setup().roots[0].root
+
+  rects = []
+
+  # iterate through top-level windows
+  for child in x.core.QueryTree(root).reply().children:
+    # make sure we only consider windows that are actually visible
+    attributes = x.core.GetWindowAttributes(child).reply()
+    if attributes.map_state != XCB_MAP_STATE_VIEWABLE:
+      continue
+
+    rects += [x.core.GetGeometry(child).reply()]
+
+  return rects
+
+def obscure_image(image):
+  """ Obscures the given image. """
+  size = image.size
+  pixel_size = 9
+
+  image = image.resize((size[0] // pixel_size, size[1] // pixel_size), Image.NEAREST)
+  image = image.resize((size[0], size[1]), Image.NEAREST)
+
+  return image
+
+def obscure(rects):
+  """ Takes an array of rects to obscure from the screenshot. """
+  image = Image.open(sys.argv[1])
+
+  for rect in rects:
+    area = (
+      rect.x, rect.y,
+      rect.x + rect.width,
+      rect.y + rect.height
+    )
+
+    cropped = image.crop(area)
+    cropped = obscure_image(cropped)
+    image.paste(cropped, area)
+
+  image.save(sys.argv[1])
+
+if __name__ == '__main__':
+  rects = xcb_fetch_windows()
+  obscure(rects)
+
