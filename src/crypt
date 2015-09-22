@@ -57,14 +57,14 @@ stty $stty_save     #restore settings
 
 
 
-if file -b "$FILE" | grep encrypted >/dev/null 2>&1; then
+if file -b "$FILE" | grep "GPG.*encrypted" >/dev/null 2>&1; then
     #input file is already encrypted, we are decrypting
     echo "decrypting.."
     gpg --pinentry-mode loopback --passphrase "$passwd" -d -o "${OUTPUT:-${FILE}.dec}" "${FILE}"
 else
     #input file is not encrypted, we will encrypt
     echo "encrypting.."
-    gpg --pinentry-mode loopback --passphrase "$passwd" -c --cipher-algo aes256 -o "${OUTPUT:-${FILE}.gpg}" "${FILE}"
+    gpg --pinentry-mode loopback --passphrase "$passwd" -c --cipher-algo aes256  --compress-algo bzip2 -z 9 -o "${OUTPUT:-${FILE}.gpg}" "${FILE}"
 fi
 
 
