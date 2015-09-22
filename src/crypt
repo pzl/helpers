@@ -1,0 +1,70 @@
+#!/bin/bash
+# Small convenience script for symmetrically encrypting or decrypting files with AES256
+#
+# Copyright (c) 2015 Dan Panzarella
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE.
+
+
+
+#check for `crypt -h`, print and exit
+if [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
+    echo "Usage: $(basename "$0") FILE [OUTPUT_FILE]"
+    exit
+fi
+
+command -v gpg >/dev/null 2>&1 || { echo "GPG must be installed" >&2; exit 1; }
+
+
+#get input filename and make sure it can be used
+readonly FILE="$1"
+if [ ! -e "$FILE" -o ! -f "$FILE" -o ! -r "$FILE" -o ! -s "$FILE" ]; then
+    echo "Cannot use "$FILE", might not be readable, or might be empty" >&2
+    exit 1
+fi
+
+
+#get output name, if given
+if [ -z "$2" ]; then
+    OUTPUT="$2"
+fi
+
+
+#get password for en- or de-crypting
+
+printf "Enter password: "
+#alternative (bash-specific): read -s
+stty_save=`stty -g` #save terminal settings
+stty -echo          #turn off echoing
+read passwd
+stty $stty_save     #restore settings
+
+
+
+if file -b "$FILE" | grep encrypted >/dev/null 2>&1; then
+    #input file is already encrypted, we are decrypting
+    echo "decrypting.."
+    gpg --pinentry-mode loopback --passphrase "$passwd" -d -o "${OUTPUT:-${FILE}.dec}" "${FILE}"
+else
+    #input file is not encrypted, we will encrypt
+    echo "encrypting.."
+    gpg --pinentry-mode loopback --passphrase "$passwd" -c --cipher-algo aes256 -o "${OUTPUT:-${FILE}.gpg}" "${FILE}"
+fi
+
+

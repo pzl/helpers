@@ -16,6 +16,12 @@ bkup
 Incomplete and non-functioning script I was going to use to backup my hard drives using JSON config. Manual config + cron won out in the end.
 
 
+crypt
+-----
+
+Quick wrapper for using `gpg` to symmetrically encrypt (so, using AES instead of openPGP keys) files, and using a stdin pass prompt instead of the awful GUIs from `pinentry` (or curses-based).
+
+
 fontview
 --------
 
