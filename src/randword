@@ -1,0 +1,51 @@
+#!/bin/bash
+# print a random word!
+#
+# Copyright (c) 2015 Dan Panzarella
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy
+# of this software and associated documentation files (the "Software"), to deal
+# in the Software without restriction, including without limitation the rights
+# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+# copies of the Software, and to permit persons to whom the Software is
+# furnished to do so, subject to the following conditions:
+# 
+# The above copyright notice and this permission notice shall be included in
+# all copies or substantial portions of the Software.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+# THE SOFTWARE. 
+
+
+if [ -s /usr/dict/words ]; then
+    FILE="/usr/dict/words"
+elif [ -s /usr/share/dict/words ]; then
+    FILE="/usr/share/dict/words"
+elif [ -s /usr/share/dict/cracklib-small ]; then
+    FILE="/usr/share/dict/cracklib-small"
+else
+    echo "no wordlist found on system. Try installing 'words' or something similar" >&2
+    exit 1
+    #@todo: pull down a suitable dict list into /tmp
+fi
+
+
+FILE_LEN="$(cat "$FILE" | wc -l)"
+
+
+if command -v shuf >/dev/null 2>&1; then
+    RAND="$(shuf -i 1-$FILE_LEN -n 1)"
+elif command -v jot >/dev/null 2>&1; then #rumered mac/BSD version 
+    RAND="$(jot -r 1 1 $FILE_LEN)"
+else
+    echo "Could not find a random range picker. Install 'shuf' or 'jot'" >&2
+    exit 1
+fi
+
+
+awk "NR==${RAND}{print;exit}" "$FILE"
