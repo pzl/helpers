@@ -25,7 +25,7 @@
 
 cleanhome() {
     cd ~
-    rm -rf -- .arduino .binwalk .bzr.log .cache/mozilla .mozilla .cache/libimobiledevice .chirp .java ".pronsolerc~bak" .ptbt1 .rgb.txt .lesshst .python_history .gr_fftw_wisdom .esd_auth .gnuradio .gphoto .rnd .kicad .eeschema .pcbnew .cvpcb 
+    rm -rf -- .arduino .binwalk .bzr.log .cache/mozilla .mozilla .cache/libimobiledevice .chirp .java .ptbt1 .rgb.txt .lesshst .python_history .gr_fftw_wisdom .esd_auth .gnuradio .gphoto .rnd .kicad .eeschema .pcbnew .cvpcb  .xdvirc .wireshark .gnome .pulse-cookie .npm
 }
 
 
