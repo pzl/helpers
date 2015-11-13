@@ -105,7 +105,7 @@ if [ ! -e "$input" ]; then
     exit 1
 fi
 
-if ffmpeg -ss $start_time -i "$input" -t $duration -s $size -f image2 %03d.png; then
+if ! ffmpeg -ss $start_time -i "$input" -t $duration -s $size -f image2 %03d.png; then
     exit 1
 fi
 sxiv *.png &
