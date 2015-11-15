@@ -1,271 +1,221 @@
-#!/bin/bash
-# convenience script for making animated gifs from 
-# youtube or other videos using ffmpeg, imagemagick and/or gifsicle
-#
-# Copyright (c) 2014 Dan Panzarella
-#
-# Permission is hereby granted, free of charge, to any person obtaining a copy
-# of this software and associated documentation files (the "Software"), to deal
-# in the Software without restriction, including without limitation the rights
-# to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-# copies of the Software, and to permit persons to whom the Software is
-# furnished to do so, subject to the following conditions:
-# 
-# The above copyright notice and this permission notice shall be included in
-# all copies or substantial portions of the Software.
-#
-# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-# IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-# FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-# AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-# LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-# OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
-# THE SOFTWARE. 
+#!/usr/bin/env python
+"""
+convenience script for making animated gifs from 
+youtube or other videos using ffmpeg, imagemagick and/or gifsicle
 
-help="Usage: `basename $0` [OPTIONS] SOURCE GIF_NAME
-    OPTIONS:
-        -h    help message
-        -t   start time (roughly, will ask for exact frame later)
-        -d   duration (roughly, will ask for exact stop frame)
-"
-#        -s    gif size (default 480x270)
-#        -z   fuzz amount (default 2)
+Copyright (c) 2014 Dan Panzarella
 
-#fuzz=2
-start_time="0:0:0"
-duration="0:0:5"
-#size="480x270"
-readonly frame_rate=25
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+ 
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
 
-#@todo: reinstate size
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE. 
+"""
+import os, sys
+import subprocess
+import glob
+import argparse
+import shutil
+import string, random
 
 
-while getopts :ht:d: opt; do
-    case "$opt" in
-        h)
-            echo "$help"
-            exit 0
-            ;;
-        \?)
-            echo "$help"
-            echo "Invalid arg: -$OPTARG" >&2
-            exit 1
-            ;;
-        :)
-            echo "$help"
-            echo "-$OPTARG requires an argument" >&2
-            exit 1
-            ;;
-#        s)
-#            size="$OPTARG"
-#            ;;
-        t)
-            start_time="$OPTARG"
-            ;;
-        d)
-            duration="$OPTARG"
-            ;;
-#        z)
-#            fuzz="$OPTARG"
-#            ;;
-    esac
-done
+"""
+	@todo:
+		- take size argument
+		- fuzzing / quality slider?
+		- configurable frame rate (of pulling from vid, and output gif)  (-r N and -vf "fps=N")
+		- restore optimizer (gifsicle -O3)
+		- frame skipping+speed reduction for some savings (affects frame rate)
+		- clean up palette files afterwards
+"""
 
-input=${@:$OPTIND:1}
-if [ -z "$input" ]; then
-    echo "Error: input source is required" >&2
-    echo "$help"
-    exit 1
-fi
-
-gif_out=${@:$OPTIND+1:1}
-if [ -z "$gif_out" ]; then
-    echo "Error: output gif filename is required" >&2
-    echo "$help"
-    exit 1
-fi
+FRAME_RATE=25
+SIZE="1280x720"
 
 
-if [ "${input:0:4}" == "http" ]; then
-    fn=$(youtube-dl --get-filename $input)
-    if [ -f "$fn" ]; then
-        echo "file exists, not redownloading"
-        input="$fn"
-    else
-        echo "downloading"
-        youtube-dl $input
-        if [ $? -ne 0 ]; then
-            echo "couldn't download video"
-            exit 1
-        fi
-        input="$fn"
-    fi
-fi
+def verify_installed(program):
+	if hasattr(verify_installed,program):		#check cached results
+		return getattr(verify_installed,program)
 
-if [ ! -e "$input" ]; then
-    echo "invalid source file" >&2
-    exit 1
-fi
+	if not shutil.which(program):
+		print("%s needs to be installed for this to work" % program,file=sys.stderr)
+		sys.exit(1)
+
+	setattr(verify_installed,program,True) #cache results
 
 
-###
-# basic alias to ffmpeg
-# ffbase VIDEO START DURATION *ARGS
-###
-ffbase() {
-    ffmpeg -v warning -ss $start_time -t $duration -i "$input" "$@"
-    local filename="$_"
-    if [ "${filename: -3}" = "gif" ]; then
-        gifsicle -O3 "$filename" > "${filename%.gif}-opt.gif" &
-    fi
-}
+def parse_args():
+	parser = argparse.ArgumentParser(description='Creates gifs')
+	#positional args
+	parser.add_argument('video',metavar='VIDEO',help="Input video to be converted. Can be YouTube URL")
+	parser.add_argument('output',metavar='GIF_NAME',nargs='?',default=".gif",help="Output gif name")
+	#flag arguments
+	parser.add_argument('-s','--start',metavar='TIME',default="0",help="start time (roughly, will ask for exact frame later)")
+	parser.add_argument('-d','--duration',metavar='TIME',default="5",help="duration (roughly, will ask for exact frame later)")
+	#parser.add_argument('--optimize',dest='optimize',action='store_true',help="generate gifsicle optimized gifs")
 
-ffpalette(){
-    local rand_name="/tmp/$(cat /dev/urandom | tr -dc '0-9a-zA-Z' | head -c 8)-palette.png"
-    ffbase -vf "$scale,palettegen" -y "$rand_name"
-    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse" -y "$1"
-}
+	return parser.parse_args()
 
-ffdiffuse(){
-    local rand_name="/tmp/$(cat /dev/urandom | tr -dc '0-9a-zA-Z' | head -c 8)-palette.png"
-    ffbase -vf "$scale,palettegen=stats_mode=${1}" -y "$rand_name"
-    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse" -y "04-palette_${1}-${gif_out}" &
-    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse=dither=none" -y "05-palette_${1}_nodither-${gif_out}" &
-    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse=dither=bayer:bayer_scale=1" -y "05-palette_${1}_bayer1-${gif_out}" &
-    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse=dither=bayer:bayer_scale=2" -y "05-palette_${1}_bayer2-${gif_out}" &
-    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse=dither=bayer:bayer_scale=3" -y "05-palette_${1}_bayer3-${gif_out}" &
-    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse=dither=floyd_steinberg" -y "05-palette_${1}_floydstein-${gif_out}" &
-    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse=dither=sierra2" -y "05-palette_${1}_sierra2-${gif_out}" &
-    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse=dither=sierra2_4a" -y "05-palette_${1}_sierra24a-${gif_out}" &
-}
+def validate_args(args):
+	if args.video.lower()[:4] == 'http':
+		filename = video_filename(args.video)
+		if os.path.isfile(filename):
+			print('file exists, not re-downloading')
+		else:
+			print("downloading video from youtube")
+			download_video(args.video)
+			if not os.path.isfile(filename):
+				print("downloaded video, but could not locate saved file",file=sys.stderr)
+				sys.exit(1)
+		return filename
+	else:
+		if not os.path.isfile(args.video):
+			print("could not find video file %s" % args.video,file=sys.stderr)
+			sys.exit(1)
 
-###
-# vid_to_frames VIDEO START_TIME DURATION SIZE
-###
-vid_to_frames(){
-    ffmpeg -ss "$2" -t "$3" -i "$1" -r 25 -s "$4" -f image2 %03d.png
-}
-
-###
-# frames_to_vid FILENAME.mp4
-###
-frames_to_vid() {
-    ffmpeg -f image2 -i %03d.png -c:v libx264 -pix_fmt yuv444p -r 25 -y "$1"
-}
-
-###
-# Select an exact starting and ending frame
-###
-choose_frames(){
-    local pid
-
-    sxiv *.png &
-    pid="$!"
-    echo -n "Review the images and enter the starting frame number: "
-    read start_frame
-    if [ "$start_frame" == "" ]; then
-        echo "empty frame, aborting"
-        exit 1
-    fi
-    echo -n "Enter the ending frame number: "
-    read end_frame
-    if [ "$end_frame" == "" ]; then
-        echo "empty frame, aborting"
-        exit 1
-    fi
-    kill "$pid"
-    #no need to generate frame sequence anymore, right?
-    #frames=$(seq -f %03g.png $sframe $eframe)
-    #frameskip=$(seq -f %03g.png $sframe 2 $eframe)
-}
-
-###
-# make_all_the_gifs START DURATION
-###
-make_all_the_gifs(){
-    #@todo: frame rate /fps. avail via -r $rate and -vf "fps=$rate"
-    #@todo: use size input in scale filter
-    #@todo: wtf is -giffflags
-    #@todo: transdiff options in lower commands?
-    #@todo: fuzz?
-
-    local size="1280:-1"
-    local scale="scale=$size:flags=lanczos"
-
-    ###
-    # Quick, one-shot method all through ffmpeg
-    ###
-    ffmpeg -v warning -ss "$1" -t "$2" -i "$input" -vf "$scale" -gifflags -transdiff -y "00-simple_notrans-$gif_out" &
-    ffmpeg -v warning -ss "$1" -t "$2" -i "$input" -vf "$scale" -gifflags +transdiff -y "01-simple_trans-$gif_out" &
-
-    ###
-    # Dithering
-    ###
-    ffmpeg -v warning -ss "$1" -t "$2" -i "$input"  -vf "$scale:sws_dither=ed" -y "02-simple_dither_ed-$gif_out" &
-
-    return
-
-    ###
-    # Better palette
-    ###
-    ffpalette "03-palette-$gif_out" &
-
-    ###
-    # stats mode full (overall palette quality)
-    # with all various diffuse options
-    ###
-    ffdiffuse "full" &
-
-    ###
-    # stats mode diff (care more about movement)
-    # with all various diffuse options
-    ###
-    ffdiffuse "diff" &
-
-
-}
-
-main(){
-    local start_time_exact
-    local duration_exact
-
-    # First, convert to frames so we can choose exactly where to start
-    vid_to_frames "$input" "$start_time" "$duration" "1280x720"
-    choose_frames
-    rm *.png
-
-    start_time_exact="$(echo "scale=3;${start_time} + (${start_frame}/${frame_rate})" | bc)"
-    duration_exact="$(echo "scale=3;(${end_frame} - ${start_frame} - 1)/${frame_rate}" | bc)"
-
-    make_all_the_gifs $start_time_exact $duration_exact
-}
-
-
-main
-exit 0
-
-
-#@todo: cleanup palettes
-
-exit 0
-###################
-
-if ! ffmpeg -ss $start_time -t $duration -i "$input" -r 25 -s $size -f image2 %03d.png; then
-    exit 1
-fi
+	return args.video
 
 
 
-#add gimp processing here too
-convert +repage -fuzz ${fuzz}% -delay 4 -loop 0 $frames -layers OptimizePlus -layers OptimizeTransparency "$gif_out"
-#if [ $? -eq 0 ]; then
-    #sxiv "$gif_out" &
-#fi
-#gifsicle -O3 -k 256 -f $2 > $2.opt
+
+def download_video(video):
+	verify_installed('youtube-dl')
+	result = subprocess.run(["youtube-dl","-c","-i","-f","22",video],check=True)
+
+def video_filename(url):
+	verify_installed('youtube-dl')
+	filename = subprocess.run(["youtube-dl","--get-filename",url],stdout=subprocess.PIPE,check=True)
+	filename = filename.stdout.decode('utf-8').strip()
+	return filename
 
 
-#try skip every other frame
-convert +repage -fuzz ${fuzz}% -delay 6 -loop 0 $frameskip -layers OptimizePlus -layers OptimizeTransparency "skip-$gif_out"
-#if [ $? -eq 0 ]; then
-    #sxiv "skip-$gif_out" &
-#fi
+def video_to_frames(video,start,duration):
+	verify_installed('ffmpeg')
+	print('creating frames...')
+	result = subprocess.run(["ffmpeg","-ss",start,"-t",duration,"-i",video,"-r",str(FRAME_RATE),"-s",SIZE,"-f","image2","%03d.png"],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+
+def frames_to_video(filename):
+	verify_installed("ffmpeg")
+	result = subprocess.run(["ffmpeg","-f","image2","-i","%03d.png","-c:v","libx264","-pix_fmt","yuv444p","-r",str(FRAME_RATE),"-y",filename],check=True)
+
+def clear_frame_files():
+	for filename in glob.glob("*.png"):
+		os.remove(filename)
+
+
+def choose_frames():
+	verify_installed("sxiv") #@todo: pop up our own window? not hard to add an image viewer here
+	files = sorted(glob.glob("*.png"))
+	proc = subprocess.Popen(["sxiv"]+files)
+	start_frame = int(input("Review the images and enter the starting frame number: "))
+	if not os.path.isfile("%03d.png" % start_frame):
+		print("That was not a valid frame we showed you",file=sys.stderr)
+	end_frame = int(input("Enter the ending frame number: "))
+	if not os.path.isfile("%03d.png" % end_frame):
+		print("That was not a valid frame we showed you",file=sys.stderr)
+
+	proc.terminate()
+	return (start_frame,end_frame)
+
+
+def convert_time(tm):
+	"""
+	Converts a given time to seconds
+	Time can be presented as just seconds (does nothing)
+	or of the format HH:MM:SS.MICROSECONDS
+	"""
+	seconds=0 #our accumulator
+	scale=1 #used when converting minutes, hours
+	micro="0" #add back any microseconds given
+	tm=str(tm)
+	if '.' in tm:
+		tm,micro = tm.split('.')
+	units = tm.split(':')
+	#now, work in increasing order as (minutes,hours) are optional
+	units.reverse()
+	for i in units:
+		seconds += (int(i)*scale)
+		scale *= 60 #next time unit up will need this as the scaler
+	return float("%d.%s" % (seconds,micro))
+
+
+def random_name(n=5):
+	return ''.join(random.choice(string.ascii_letters) for _ in range(n))
+
+
+def calculate_exact_times(start_time,end_time,start_frame,end_frame):
+	start = convert_time(start_time)
+
+	start += start_frame/(FRAME_RATE*1.0) #move start forward by however many chosen frames
+	end = (end_frame - start_frame - 1)/(FRAME_RATE*1.0) #original chosen time can be totally discarded
+	# duration is simply relative to new start. get there just by frame counting
+	
+	return ("%.03f" % start,"%.03f" % end)
+
+def make_all(video,start,end,filename):
+	simple = ffmpeg(video,start,end)
+
+	simple("-gifflags","-transdiff","-y","01-notrans-%s" % filename)
+	simple("-gifflags","+transdiff","-y","01-trans-%s" % filename)
+
+	ffmpeg(video,start,end,':sws_dither=ed')("-y","02-sws_dither-%s" % filename)
+
+	name="/tmp/%s-palette.png" % random_name()
+	ffmpeg(video,start,end,',palettegen')("-y",name,bg=False) #create palette
+	ffmpeg(video,start,end,' [x]; [x][1:v] paletteuse','-lavfi')("-i",name,"-y","03-palette-%s"%filename)
+
+
+	stats_mode(video,start,end,filename,"full") # overall palette quality
+	stats_mode(video,start,end,filename,"diff") # care more about moving parts
+
+
+def stats_mode(video,start,end,filename,mode):
+	diffusers = ("none","bayer:bayer_scale=1","bayer:bayer_scale=2","bayer:bayer_scale=3","floyd_steinberg","sierra2","sierra2_4a")
+
+	name="/tmp/%s-palette.png" % random_name()
+	ffmpeg(video,start,end,',palettegen=stats_mode=%s' % mode)("-y",name,bg=False) #create palette
+	ffmpeg(video,start,end,' [x]; [x][1:v] paletteuse','-lavfi')("-i",name,"-y","04-palette_%s-%s"%(mode,filename)) #base without diffusers
+	for d in diffusers:
+		ffmpeg(video,start,end,' [x]; [x][1:v] paletteuse=dither=%s' % d,'-lavfi')("-i",name,"-y","05-palette_%s_%s-%s"%(mode,d,filename))
+
+
+def ffmpeg(video,start,end,scaleopts='',flagname="-vf"):
+	verify_installed("ffmpeg")
+	scale = SIZE.replace('x',':')
+	def newfunc(*args,bg=True):
+		launch = subprocess.Popen if bg else subprocess.run
+		launch(["ffmpeg","-v","warning","-ss",start,"-t",end,"-i",video,flagname,"scale=%s:flags=lanczos%s" % (scale,scaleopts),*args],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+	return newfunc
+
+def main():
+	args = parse_args()
+	video_name = validate_args(args)
+	if not video_name:
+		sys.exit(1)
+
+	video_to_frames(video_name,args.start,args.duration)
+	start_frame,end_frame = choose_frames()
+	clear_frame_files()
+	
+	start,end = calculate_exact_times(args.start,args.duration,start_frame,end_frame)
+
+	print("creating gifs...")
+	make_all(video_name,start,end,args.output)
+
+
+
+
+if __name__ == "__main__":
+	main()
