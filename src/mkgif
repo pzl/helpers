@@ -22,23 +22,25 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE. 
 
-
 help="Usage: `basename $0` [OPTIONS] SOURCE GIF_NAME
     OPTIONS:
         -h    help message
-        -s    gif size (default 480x270)
-        -t   start time (default 0:0:0)
-        -d   duration of video to convert (default 0:0:5)
-        -z   fuzz amount (default 2)
+        -t   start time (roughly, will ask for exact frame later)
+        -d   duration (roughly, will ask for exact stop frame)
 "
-fuzz=2
+#        -s    gif size (default 480x270)
+#        -z   fuzz amount (default 2)
+
+#fuzz=2
 start_time="0:0:0"
 duration="0:0:5"
-size="480x270"
-#size="640x360"
+#size="480x270"
+readonly frame_rate=25
+
+#@todo: reinstate size
 
 
-while getopts :hs:t:d:z: opt; do
+while getopts :ht:d: opt; do
     case "$opt" in
         h)
             echo "$help"
@@ -54,18 +56,18 @@ while getopts :hs:t:d:z: opt; do
             echo "-$OPTARG requires an argument" >&2
             exit 1
             ;;
-        s)
-            size="$OPTARG"
-            ;;
+#        s)
+#            size="$OPTARG"
+#            ;;
         t)
             start_time="$OPTARG"
             ;;
         d)
             duration="$OPTARG"
             ;;
-        z)
-            fuzz="$OPTARG"
-            ;;
+#        z)
+#            fuzz="$OPTARG"
+#            ;;
     esac
 done
 
@@ -105,27 +107,152 @@ if [ ! -e "$input" ]; then
     exit 1
 fi
 
-if ! ffmpeg -ss $start_time -i "$input" -t $duration -s $size -f image2 %03d.png; then
+
+###
+# basic alias to ffmpeg
+# ffbase VIDEO START DURATION *ARGS
+###
+ffbase() {
+    ffmpeg -v warning -ss $start_time -t $duration -i "$input" "$@"
+    local filename="$_"
+    if [ "${filename: -3}" = "gif" ]; then
+        gifsicle -O3 "$filename" > "${filename%.gif}-opt.gif" &
+    fi
+}
+
+ffpalette(){
+    local rand_name="/tmp/$(cat /dev/urandom | tr -dc '0-9a-zA-Z' | head -c 8)-palette.png"
+    ffbase -vf "$scale,palettegen" -y "$rand_name"
+    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse" -y "$1"
+}
+
+ffdiffuse(){
+    local rand_name="/tmp/$(cat /dev/urandom | tr -dc '0-9a-zA-Z' | head -c 8)-palette.png"
+    ffbase -vf "$scale,palettegen=stats_mode=${1}" -y "$rand_name"
+    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse" -y "04-palette_${1}-${gif_out}" &
+    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse=dither=none" -y "05-palette_${1}_nodither-${gif_out}" &
+    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse=dither=bayer:bayer_scale=1" -y "05-palette_${1}_bayer1-${gif_out}" &
+    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse=dither=bayer:bayer_scale=2" -y "05-palette_${1}_bayer2-${gif_out}" &
+    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse=dither=bayer:bayer_scale=3" -y "05-palette_${1}_bayer3-${gif_out}" &
+    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse=dither=floyd_steinberg" -y "05-palette_${1}_floydstein-${gif_out}" &
+    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse=dither=sierra2" -y "05-palette_${1}_sierra2-${gif_out}" &
+    ffbase -i "$rand_name" -lavfi "$scale [x]; [x][1:v] paletteuse=dither=sierra2_4a" -y "05-palette_${1}_sierra24a-${gif_out}" &
+}
+
+###
+# vid_to_frames VIDEO START_TIME DURATION SIZE
+###
+vid_to_frames(){
+    ffmpeg -ss "$2" -t "$3" -i "$1" -r 25 -s "$4" -f image2 %03d.png
+}
+
+###
+# frames_to_vid FILENAME.mp4
+###
+frames_to_vid() {
+    ffmpeg -f image2 -i %03d.png -c:v libx264 -pix_fmt yuv444p -r 25 -y "$1"
+}
+
+###
+# Select an exact starting and ending frame
+###
+choose_frames(){
+    local pid
+
+    sxiv *.png &
+    pid="$!"
+    echo -n "Review the images and enter the starting frame number: "
+    read start_frame
+    if [ "$start_frame" == "" ]; then
+        echo "empty frame, aborting"
+        exit 1
+    fi
+    echo -n "Enter the ending frame number: "
+    read end_frame
+    if [ "$end_frame" == "" ]; then
+        echo "empty frame, aborting"
+        exit 1
+    fi
+    kill "$pid"
+    #no need to generate frame sequence anymore, right?
+    #frames=$(seq -f %03g.png $sframe $eframe)
+    #frameskip=$(seq -f %03g.png $sframe 2 $eframe)
+}
+
+###
+# make_all_the_gifs START DURATION
+###
+make_all_the_gifs(){
+    #@todo: frame rate /fps. avail via -r $rate and -vf "fps=$rate"
+    #@todo: use size input in scale filter
+    #@todo: wtf is -giffflags
+    #@todo: transdiff options in lower commands?
+    #@todo: fuzz?
+
+    local size="1280:-1"
+    local scale="scale=$size:flags=lanczos"
+
+    ###
+    # Quick, one-shot method all through ffmpeg
+    ###
+    ffmpeg -v warning -ss "$1" -t "$2" -i "$input" -vf "$scale" -gifflags -transdiff -y "00-simple_notrans-$gif_out" &
+    ffmpeg -v warning -ss "$1" -t "$2" -i "$input" -vf "$scale" -gifflags +transdiff -y "01-simple_trans-$gif_out" &
+
+    ###
+    # Dithering
+    ###
+    ffmpeg -v warning -ss "$1" -t "$2" -i "$input"  -vf "$scale:sws_dither=ed" -y "02-simple_dither_ed-$gif_out" &
+
+    return
+
+    ###
+    # Better palette
+    ###
+    ffpalette "03-palette-$gif_out" &
+
+    ###
+    # stats mode full (overall palette quality)
+    # with all various diffuse options
+    ###
+    ffdiffuse "full" &
+
+    ###
+    # stats mode diff (care more about movement)
+    # with all various diffuse options
+    ###
+    ffdiffuse "diff" &
+
+
+}
+
+main(){
+    local start_time_exact
+    local duration_exact
+
+    # First, convert to frames so we can choose exactly where to start
+    vid_to_frames "$input" "$start_time" "$duration" "1280x720"
+    choose_frames
+    rm *.png
+
+    start_time_exact="$(echo "scale=3;${start_time} + (${start_frame}/${frame_rate})" | bc)"
+    duration_exact="$(echo "scale=3;(${end_frame} - ${start_frame} - 1)/${frame_rate}" | bc)"
+
+    make_all_the_gifs $start_time_exact $duration_exact
+}
+
+
+main
+exit 0
+
+
+#@todo: cleanup palettes
+
+exit 0
+###################
+
+if ! ffmpeg -ss $start_time -t $duration -i "$input" -r 25 -s $size -f image2 %03d.png; then
     exit 1
 fi
-sxiv *.png &
-p="$!"
-echo -n "Review the images and enter the starting frame number: "
-read sframe
-if [ "$sframe" == "" ]; then
-    echo "empty frame, aborting"
-    exit 1
-fi
-echo -n "Enter the ending frame number: "
-read eframe
-if [ "$eframe" == "" ]; then
-    echo "empty frame, aborting"
-    exit 1
-fi
-kill "$p"
-frames=$(seq -f %03g.png $sframe $eframe)
-frameskip=$(seq -f %03g.png $sframe 2 $eframe)
-echo "selected frames: $sframe - $eframe"
 
 
 
