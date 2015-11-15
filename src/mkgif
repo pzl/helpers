@@ -71,6 +71,8 @@ def parse_args():
 	#flag arguments
 	parser.add_argument('-s','--start',metavar='TIME',default="0",help="start time (roughly, will ask for exact frame later)")
 	parser.add_argument('-d','--duration',metavar='TIME',default="5",help="duration (roughly, will ask for exact frame later)")
+	parser.add_argument('-k','--keep',dest='keep_frames',action='store_true',help="Keep (do not discard) PNG frames")
+	parser.add_argument('-f','--frames-only',dest='frames_only',action='store_true',help="Generate PNG frames only, then exit")
 	#parser.add_argument('--optimize',dest='optimize',action='store_true',help="generate gifsicle optimized gifs")
 
 	return parser.parse_args()
@@ -221,8 +223,14 @@ def main():
 		sys.exit(1)
 
 	video_to_frames(video_name,args.start,args.duration)
+
+	if args.frames_only:
+		sys.exit(0)
+
 	start_frame,end_frame = choose_frames()
-	clear_frame_files()
+	
+	if not args.keep_frames:
+		clear_frame_files()
 	
 	start,end = calculate_exact_times(args.start,args.duration,start_frame,end_frame)
 
