@@ -22,6 +22,7 @@
 # THE SOFTWARE.
 
 
+set -e
 
 #check for `crypt -h`, print and exit
 if [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
@@ -33,8 +34,8 @@ command -v gpg >/dev/null 2>&1 || { echo "GPG must be installed" >&2; exit 1; }
 
 
 #get input filename and make sure it can be used
-readonly FILE="$1"
-if [ ! -e "$FILE" -o ! -f "$FILE" -o ! -r "$FILE" -o ! -s "$FILE" ]; then
+readonly FILE="${1%/}" #%/ to remove any trailing slashes (esp on directories)
+if [ ! -e "$FILE" -o ! -f "$FILE" -a ! -d "$FILE"  -o ! -r "$FILE" -o ! -s "$FILE" ]; then
     echo "Cannot use "$FILE", might not be readable, or might be empty" >&2
     exit 1
 fi
@@ -55,16 +56,43 @@ stty -echo          #turn off echoing
 read passwd
 stty $stty_save     #restore settings
 
+printf '\n'
 
+
+#to get command-line prompt in gpgv2 and not ncurses-based:
+# > gpg-agent.conf
+# pinentry-program /usr/bin/pinentry-curses
+# allow-loopback-pinentry
+#
+#and then use `gpg --pinentry-mode loopback ...` and you will get a prompt
+#here, we prompt earlier and pass it as an option using --passphrase, but that is not required.
 
 if file -b "$FILE" | grep "GPG.*encrypted" >/dev/null 2>&1; then
     #input file is already encrypted, we are decrypting
     echo "decrypting.."
-    gpg --pinentry-mode loopback --passphrase "$passwd" -d -o "${OUTPUT:-${FILE}.dec}" "${FILE}"
+    gpg --pinentry-mode loopback --passphrase "$passwd" -d -o "${OUTPUT:-${FILE%.gpg}}" "${FILE}"
+
+    #if bzipped, we're not done. was probably a dir
+    if file -b "${OUTPUT:-${FILE%.gpg}}" | grep "^bzip2" >/dev/null 2>&1; then
+        tar -xjf "${OUTPUT:-${FILE%.gpg}}"
+    fi
+
+
+    rm -rf "$FILE"
+
 else
     #input file is not encrypted, we will encrypt
     echo "encrypting.."
-    gpg --pinentry-mode loopback --passphrase "$passwd" -c --cipher-algo aes256  --compress-algo bzip2 -z 9 -o "${OUTPUT:-${FILE}.gpg}" "${FILE}"
+
+    #directories can't be gpg'd directly. tar first
+    if [ -d "$FILE" ];then
+        tar -cjf "${FILE}.tar.bz" "$FILE"
+        gpg --pinentry-mode loopback --passphrase "$passwd" -c --cipher-algo aes256 -z 0 -o "${OUTPUT:-${FILE}.gpg}" "${FILE}.tar.bz"
+        rm -rf "${FILE}.tar.bz"
+    else
+        gpg --pinentry-mode loopback --passphrase "$passwd" -c --cipher-algo aes256  --compress-algo bzip2 -z 9 -o "${OUTPUT:-${FILE}.gpg}" "${FILE}"
+    fi
+    rm -rf "$FILE"
 fi
 
 
