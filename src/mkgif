@@ -115,7 +115,7 @@ def video_to_frames(video,start,duration):
 
 @requires('ffmpeg')
 def frames_to_video(filename):
-	result = subprocess.run(["ffmpeg","-f","image2","-i",FRAME_PATTERN,"-c:v","libx264","-pix_fmt","yuv444p","-r",str(FRAME_RATE),"-y",filename],check=True)
+	result = subprocess.run(["ffmpeg","-f","image2","-i",FRAME_PATTERN,"-c:v","libx264","-qp","0","-preset","fast","-pix_fmt","yuv444p","-r",str(FRAME_RATE),"-y",filename],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
 def clear_frame_files():
 	for filename in glob.glob(FRAME_GLOB):
@@ -228,7 +228,7 @@ def main():
 		sys.exit(0)
 
 	start_frame,end_frame = choose_frames()
-	
+
 	if not args.keep_frames:
 		clear_frame_files()
 	
