@@ -7,34 +7,84 @@ EIGHT_BIT_LINE_LEN=8
 i=$START_COLOR
 only_block=0
 
-[ $# -gt 0 ] && [ $@ = '-b' ] && only_block=1
 
-printf '\n'
+print_all(){
+    printf '\n'
+    
+    # original 8-bitters
+    while [ $i -le 16 ]; do
+        if [ $only_block -eq 1 ]; then
+            printf "\033[38;5;${i}m%s" '██'
+        else
+            printf "\033[38;5;${i}m%s%03u" '■' $i
+        fi
+        [ $(((i - START_COLOR + 1) % EIGHT_BIT_LINE_LEN)) -eq 0 -a $i -gt $START_COLOR ] && printf '\n'
+        i=$((i + 1))
+    done
+    
+    
+    j=$i
+    i=0
+    while [ $j -le $END_COLOR ]; do
+        if [ $only_block -eq 1 ] ; then
+            printf "\033[38;5;${j}m%s" '██'
+        else
+            printf "\033[38;5;${j}m%s%03u" '■' $j
+        fi
+        [ $(((i - START_COLOR + 2 ) % LINE_LENGTH)) -eq 0 -a $i -gt $START_COLOR ] && printf '\n'
+        i=$((i + 1))
+        j=$((j + 1))
+    done
 
-# original 8-bitters
-
-while [ $i -le 16 ]; do
-    if [ $only_block -eq 1 ]; then
-        printf "\033[38;5;${i}m%s" '██'
-    else
-        printf "\033[38;5;${i}m%s%03u" '■' $i
-    fi
-    [ $(((i - START_COLOR + 1) % EIGHT_BIT_LINE_LEN)) -eq 0 -a $i -gt $START_COLOR ] && printf '\n'
-    i=$((i + 1))
-done
+    printf '\033[0m\n\n'
+}
 
 
-j=$i
-i=0
-while [ $j -le $END_COLOR ]; do
-    if [ $only_block -eq 1 ] ; then
-        printf "\033[38;5;${j}m%s" '██'
-    else
-        printf "\033[38;5;${j}m%s%03u" '■' $j
-    fi
-    [ $(((i - START_COLOR + 2 ) % LINE_LENGTH)) -eq 0 -a $i -gt $START_COLOR ] && printf '\n'
-    i=$((i + 1))
-    j=$((j + 1))
-done
+fg_on_bg() {
+    printf '\n'
 
-printf '\033[0m\n\n'
+    # original 8-bitters
+    while [ $i -le 16 ]; do
+        printf "\033[00;48;5;${i};38;5;${1}m %3s " "$i" 
+        [ $(((i - START_COLOR + 1) % EIGHT_BIT_LINE_LEN)) -eq 0 -a $i -gt $START_COLOR ] && printf '\033[0m\n'
+        i=$((i + 1))
+    done
+    
+    
+    j=$i
+    i=0
+    while [ $j -le $END_COLOR ]; do
+        printf "\033[00;48;5;${j};38;5;${1}m %3s " "$j"
+        [ $(((i - START_COLOR + 2 ) % LINE_LENGTH)) -eq 0 -a $i -gt $START_COLOR ] && printf '\033[0m\n'
+        i=$((i + 1))
+        j=$((j + 1))
+    done
+
+    printf '\033[0m\n\n'
+
+}
+
+
+if [ $# -gt 0 ]; then
+    case "$1" in
+        -b)
+            only_block=1
+            print_all
+            ;;
+        bg)
+            if [ $# -lt 2 ]; then
+                echo "foreground color required" >&2
+                exit 1
+            fi
+            fg_on_bg "$2"
+            ;;
+        *)
+            echo "invalid command" >&2
+            exit 1
+            ;;
+    esac
+else
+    print_all
+fi
+
+
