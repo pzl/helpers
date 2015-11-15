@@ -35,27 +35,30 @@ RULE=()
 case "$TYPE" in
 	dock|desktop|notification)	RULE+=("manage=off") ;;
 	toolbar|utility)			RULE+=("focus=off") ;;
-	desktop)					RULE+=("lower=on") ;;
+	desktop)					RULE+=("layer=below") ;;
 esac
 
 for s in $STATE; do
 	case $s in
 		sticky)					RULE+=("sticky=on") ;;
-		fullscreen)				RULE+=("fullscreen=on") ;;
+		fullscreen)				RULE+=("state=fullscreen") ;;
 	esac
 done
 
 
 #custom rules
 case "$INST" in
-	Google-chrome*|google-chrome*|nitrogen|gimp*|ruler|gbdfed)
-		RULE+=("floating=on") ;;
+	Google-chrome*|google-chrome*|nitrogen|gimp*|ruler|gbdfed|zoom)
+		RULE+=("state=floating") ;;
 	BSPWM_FRAME|bspwm_frame)
 		RULE+=("frame=on") ;;
     xmessage|tint2)
         RULE+=("manage=off") ;;
     blue)
-        RULE+=("floating=on") ;;
+        RULE+=("state=floating") ;;
 esac
+
+# Debug:
+#echo "got ID: <$1> class <$2> instance <$3> and read -its as <$INST><$TYPE><$STATE> and then gave as output: ${RULE[*]}" >> ~/tmp/bspwm-tiling
 
 echo "${RULE[*]}"
