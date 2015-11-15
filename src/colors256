@@ -1,0 +1,40 @@
+#!/bin/bash
+
+START_COLOR=0
+END_COLOR=255
+LINE_LENGTH=6
+EIGHT_BIT_LINE_LEN=8
+i=$START_COLOR
+only_block=0
+
+[ $# -gt 0 ] && [ $@ = '-b' ] && only_block=1
+
+printf '\n'
+
+# original 8-bitters
+
+while [ $i -le 16 ]; do
+    if [ $only_block -eq 1 ]; then
+        printf "\033[38;5;${i}m%s" '██'
+    else
+        printf "\033[38;5;${i}m%s%03u" '■' $i
+    fi
+    [ $(((i - START_COLOR + 1) % EIGHT_BIT_LINE_LEN)) -eq 0 -a $i -gt $START_COLOR ] && printf '\n'
+    i=$((i + 1))
+done
+
+
+j=$i
+i=0
+while [ $j -le $END_COLOR ]; do
+    if [ $only_block -eq 1 ] ; then
+        printf "\033[38;5;${j}m%s" '██'
+    else
+        printf "\033[38;5;${j}m%s%03u" '■' $j
+    fi
+    [ $(((i - START_COLOR + 2 ) % LINE_LENGTH)) -eq 0 -a $i -gt $START_COLOR ] && printf '\n'
+    i=$((i + 1))
+    j=$((j + 1))
+done
+
+printf '\033[0m\n\n'
