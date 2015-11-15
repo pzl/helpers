@@ -1,0 +1,25 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    echo "No package provided" >&2
+    exit 1;
+fi
+
+if ! pacman -Qi "$1" >/dev/null 2>&1; then
+    echo "package "$1" not currently installed" >&2
+fi
+
+#NEW_INFO="$(pacman -Si "$1" 2>/dev/null)"
+
+#CURVER="$(pacman -Qi "$1" 2>/dev/null | grep Version | awk '{print $3}')"
+#NEWVER="$(echo "$NEW_INFO" | grep Version | awk '{print $3}')"
+
+
+REPO="$(pacman -Si "$1" 2>/dev/null | grep Repository | awk '{print $3}')"
+
+REPO_NAME="packages"
+if [ "$REPO" = "community" ] || [ "$REPO" = "multilib" ]; then
+    REPO_NAME="community"
+fi
+
+xdg-open "https://projects.archlinux.org/svntogit/${REPO_NAME}.git/log/trunk?h=packages/${1}&showmsg=1"
