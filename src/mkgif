@@ -45,15 +45,17 @@ FRAME_RATE=25
 SIZE="1280x720"
 
 
-def verify_installed(program):
-	if hasattr(verify_installed,program):		#check cached results
-		return getattr(verify_installed,program)
-
-	if not shutil.which(program):
+#decorator to specify that a function requires a specific program be installed
+def requires(program):
+	def not_installed():
 		print("%s needs to be installed for this to work" % program,file=sys.stderr)
 		sys.exit(1)
-
-	setattr(verify_installed,program,True) #cache results
+	def decorator(func):
+		if shutil.which(program):
+			return func
+		else:
+			return not_installed
+	return decorator
 
 
 def parse_args():
@@ -89,34 +91,31 @@ def validate_args(args):
 
 
 
+@requires('youtube-dl')
+def download_video(url):
+	result = subprocess.run(["youtube-dl","-c","-i","-f","22",url],check=True)
 
-def download_video(video):
-	verify_installed('youtube-dl')
-	result = subprocess.run(["youtube-dl","-c","-i","-f","22",video],check=True)
-
+@requires('youtube-dl')
 def video_filename(url):
-	verify_installed('youtube-dl')
 	filename = subprocess.run(["youtube-dl","--get-filename",url],stdout=subprocess.PIPE,check=True)
 	filename = filename.stdout.decode('utf-8').strip()
 	return filename
 
-
+@requires('ffmpeg')
 def video_to_frames(video,start,duration):
-	verify_installed('ffmpeg')
 	print('creating frames...')
 	result = subprocess.run(["ffmpeg","-ss",start,"-t",duration,"-i",video,"-r",str(FRAME_RATE),"-s",SIZE,"-f","image2","%03d.png"],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
+@requires('ffmpeg')
 def frames_to_video(filename):
-	verify_installed("ffmpeg")
 	result = subprocess.run(["ffmpeg","-f","image2","-i","%03d.png","-c:v","libx264","-pix_fmt","yuv444p","-r",str(FRAME_RATE),"-y",filename],check=True)
 
 def clear_frame_files():
 	for filename in glob.glob("*.png"):
 		os.remove(filename)
 
-
+@requires('sxiv') #@todo: pop up our own window? not hard to add an image viewer here
 def choose_frames():
-	verify_installed("sxiv") #@todo: pop up our own window? not hard to add an image viewer here
 	files = sorted(glob.glob("*.png"))
 	proc = subprocess.Popen(["sxiv"]+files)
 	start_frame = int(input("Review the images and enter the starting frame number: "))
@@ -190,9 +189,8 @@ def stats_mode(video,start,end,filename,mode):
 	for d in diffusers:
 		ffmpeg(video,start,end,' [x]; [x][1:v] paletteuse=dither=%s' % d,'-lavfi')("-i",name,"-y","05-palette_%s_%s-%s"%(mode,d,filename))
 
-
+@requires('ffmpeg')
 def ffmpeg(video,start,end,scaleopts='',flagname="-vf"):
-	verify_installed("ffmpeg")
 	scale = SIZE.replace('x',':')
 	def newfunc(*args,bg=True):
 		launch = subprocess.Popen if bg else subprocess.run
