@@ -179,6 +179,9 @@ def make_all(video,start,end,filename):
 	pids += [simple("-gifflags","-transdiff","-y","01-notrans-%s" % filename)]
 	pids += [simple("-gifflags","+transdiff","-y","01-trans-%s" % filename)]
 
+	#generate webm!
+	pids += [simple("-c:v","libvpx","-crf","4","-b:v","50M","-c:a","libvorbis","-an","-y","%s.webm" % filename.rsplit(".",1)[0])]
+
 	pids += [ffmpeg(video,start,end,':sws_dither=ed')("-y","02-sws_dither-%s" % filename)]
 
 	name=PALETTE_NAME % random_name()
