@@ -43,6 +43,12 @@ import string, random
 FRAME_RATE=25
 SIZE="1280x720"
 
+FRAME_PATTERN="frame-%03d.png"
+FRAME_GLOB="frame-*.png"
+
+PALETTE_NAME="/tmp/palette-%s.png"
+PALETTE_GLOB=PALETTE_NAME % "*"
+
 
 #decorator to specify that a function requires a specific program be installed
 def requires(program):
@@ -103,29 +109,29 @@ def video_filename(url):
 @requires('ffmpeg')
 def video_to_frames(video,start,duration):
 	print('creating frames...')
-	result = subprocess.run(["ffmpeg","-ss",start,"-t",duration,"-i",video,"-r",str(FRAME_RATE),"-s",SIZE,"-f","image2","%03d.png"],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+	result = subprocess.run(["ffmpeg","-ss",start,"-t",duration,"-i",video,"-r",str(FRAME_RATE),"-s",SIZE,"-f","image2",FRAME_PATTERN],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
 @requires('ffmpeg')
 def frames_to_video(filename):
-	result = subprocess.run(["ffmpeg","-f","image2","-i","%03d.png","-c:v","libx264","-pix_fmt","yuv444p","-r",str(FRAME_RATE),"-y",filename],check=True)
+	result = subprocess.run(["ffmpeg","-f","image2","-i",FRAME_PATTERN,"-c:v","libx264","-pix_fmt","yuv444p","-r",str(FRAME_RATE),"-y",filename],check=True)
 
 def clear_frame_files():
-	for filename in glob.glob("*.png"):
+	for filename in glob.glob(FRAME_GLOB):
 		os.remove(filename)
 
 def clear_palette_files():
-	for filename in glob.glob("/tmp/*-palette.png"):
+	for filename in glob.glob(PALETTE_GLOB):
 		os.remove(filename)
 
 @requires('sxiv') #@todo: pop up our own window? not hard to add an image viewer here
 def choose_frames():
-	files = sorted(glob.glob("*.png"))
+	files = sorted(glob.glob(FRAME_GLOB))
 	proc = subprocess.Popen(["sxiv"]+files)
 	start_frame = int(input("Review the images and enter the starting frame number: "))
-	if not os.path.isfile("%03d.png" % start_frame):
+	if not os.path.isfile(FRAME_PATTERN % start_frame):
 		print("That was not a valid frame we showed you",file=sys.stderr)
 	end_frame = int(input("Enter the ending frame number: "))
-	if not os.path.isfile("%03d.png" % end_frame):
+	if not os.path.isfile(FRAME_PATTERN % end_frame):
 		print("That was not a valid frame we showed you",file=sys.stderr)
 
 	proc.terminate()
@@ -175,7 +181,7 @@ def make_all(video,start,end,filename):
 
 	pids += [ffmpeg(video,start,end,':sws_dither=ed')("-y","02-sws_dither-%s" % filename)]
 
-	name="/tmp/%s-palette.png" % random_name()
+	name=PALETTE_NAME % random_name()
 	ffmpeg(video,start,end,',palettegen')("-y",name,bg=False) #create palette
 	pids += [ffmpeg(video,start,end,' [x]; [x][1:v] paletteuse','-lavfi')("-i",name,"-y","03-palette-%s"%filename)]
 
@@ -190,7 +196,7 @@ def stats_mode(video,start,end,filename,mode):
 	pids=[]
 	diffusers = ("none","bayer:bayer_scale=1","bayer:bayer_scale=2","bayer:bayer_scale=3","floyd_steinberg","sierra2","sierra2_4a")
 
-	name="/tmp/%s-palette.png" % random_name()
+	name=PALETTE_NAME % random_name()
 	ffmpeg(video,start,end,',palettegen=stats_mode=%s' % mode)("-y",name,bg=False) #create palette
 	pids += [ffmpeg(video,start,end,' [x]; [x][1:v] paletteuse','-lavfi')("-i",name,"-y","04-palette_%s-%s"%(mode,filename))] #base without diffusers
 	for d in diffusers:
