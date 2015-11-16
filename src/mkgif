@@ -43,7 +43,7 @@ import string, random
 FRAME_RATE=25
 SIZE="1280x720"
 
-FRAME_PATTERN="frame-%03d.png"
+FRAME_PATTERN="frame-%04d.png"
 FRAME_GLOB="frame-*.png"
 
 PALETTE_NAME="/tmp/palette-%s.png"
