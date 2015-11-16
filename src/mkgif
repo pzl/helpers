@@ -67,8 +67,8 @@ def requires(program):
 def parse_args():
 	parser = argparse.ArgumentParser(description='Creates gifs')
 	#positional args
-	parser.add_argument('video',metavar='VIDEO',help="Input video to be converted. Can be YouTube URL")
-	parser.add_argument('output',metavar='GIF_NAME',nargs='?',default=".gif",help="Output gif name")
+	parser.add_argument('sources',metavar='SOURCE',nargs='+',help="Input to be converted. Can be Video file, YouTube URL or still frame sequence")
+	parser.add_argument('output',metavar='GIF_NAME',default="out.gif",help="Output gif name")
 	#flag arguments
 	parser.add_argument('-s','--start',metavar='TIME',default="0",help="start time (roughly, will ask for exact frame later)")
 	parser.add_argument('-d','--duration',metavar='TIME',default="5",help="duration (roughly, will ask for exact frame later)")
@@ -78,24 +78,40 @@ def parse_args():
 
 	return parser.parse_args()
 
-def validate_args(args):
-	if args.video.lower()[:4] == 'http':
-		filename = video_filename(args.video)
-		if os.path.isfile(filename):
-			print('file exists, not re-downloading')
-		else:
-			print("downloading video from youtube")
-			download_video(args.video)
-			if not os.path.isfile(filename):
-				print("downloaded video, but could not locate saved file",file=sys.stderr)
-				sys.exit(1)
-		return filename
-	else:
-		if not os.path.isfile(args.video):
-			print("could not find video file %s" % args.video,file=sys.stderr)
-			sys.exit(1)
+"""
+	Validates input files exist, and determines whether is is a single video
+	source, or frames to be combined.
 
-	return args.video
+	@param srcs - list, raw input
+	@return list - single element in the case of video files, containing filename
+				   multi-element for frames
+"""
+def validate_sources(srcs):
+	if len(srcs) == 1:
+		# assume video file or URL to one
+		if srcs[0].lower()[:4] == 'http':
+			filename = video_filename(srcs[0])
+			if os.path.isfile(filename):
+				print('file exists, not re-downloading')
+			else:
+				print("downloading video from youtube")
+				download_video(srcs[0])
+				if not os.path.isfile(filename):
+					print("downloaded video, but could not locate saved file",file=sys.stderr)
+					sys.exit(1)
+			return [filename]
+		else:
+			if not os.path.isfile(srcs[0]):
+				print("could not find video file %s" % srcs[0],file=sys.stderr)
+				sys.exit(1)
+			return srcs
+	else:
+		for src in srcs:
+			if not os.path.isfile(src):
+				print("could not find source frame: %s" % src,file=sys.stderr)
+				sys.exit(1)
+		return srcs
+
 
 
 
@@ -228,21 +244,24 @@ def ffmpeg(video,start,end,scaleopts='',flagname="-vf"):
 
 def main():
 	args = parse_args()
-	video_name = validate_args(args)
-	if not video_name:
-		sys.exit(1)
+	sources = validate_sources(args.sources)
 
-	video_to_frames(video_name,args.start,args.duration)
 
-	if args.frames_only:
-		sys.exit(0)
+	if len(sources) == 1:
+		#video file
+		video_to_frames(sources[0],args.start,args.duration)
 
-	start_frame,end_frame = choose_frames()
+		if args.frames_only:
+			sys.exit(0)
 
-	frames_to_video([FRAME_PATTERN % x for x in range(start_frame,end_frame)],TMP_VIDEO_NAME)
+		start_frame,end_frame = choose_frames()
 
-	if not args.keep_frames:
-		clear_frame_files()
+		frames_to_video([FRAME_PATTERN % x for x in range(start_frame,end_frame)],TMP_VIDEO_NAME)
+
+		if not args.keep_frames:
+			clear_frame_files()
+	else:
+		frames_to_video(sources,TMP_VIDEO_NAME)
 
 	print("creating gifs...")
 	background_processes = make_all(TMP_VIDEO_NAME,"0","0",args.output)
