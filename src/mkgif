@@ -67,11 +67,11 @@ def requires(program):
 def parse_args():
 	parser = argparse.ArgumentParser(description='Creates gifs')
 	#positional args
-	parser.add_argument('sources',metavar='SOURCE',nargs='+',help="Input to be converted. Can be Video file, YouTube URL or still frame sequence")
-	parser.add_argument('output',metavar='GIF_NAME',default="out.gif",help="Output gif name")
+	parser.add_argument('sources',metavar='SOURCE',nargs='+',help="Input to be converted. Can be Video file, YouTube URL or series of still images")
 	#flag arguments
 	parser.add_argument('-s','--start',metavar='TIME',default="0",help="start time (roughly, will ask for exact frame later)")
 	parser.add_argument('-d','--duration',metavar='TIME',default="5",help="duration (roughly, will ask for exact frame later)")
+	parser.add_argument('-o','--output',metavar='GIF_NAME',default="out.gif",help="Output gif name")
 	parser.add_argument('-k','--keep',dest='keep_frames',action='store_true',help="Keep (do not discard) PNG frames")
 	parser.add_argument('-f','--frames-only',dest='frames_only',action='store_true',help="Generate PNG frames only, then exit")
 	#parser.add_argument('--optimize',dest='optimize',action='store_true',help="generate gifsicle optimized gifs")
