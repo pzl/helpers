@@ -49,6 +49,7 @@ FRAME_GLOB="frame-*.png"
 PALETTE_NAME="/tmp/palette-%s.png"
 PALETTE_GLOB=PALETTE_NAME % "*"
 
+TMP_VIDEO_NAME="tmp.mp4"
 
 #decorator to specify that a function requires a specific program be installed
 def requires(program):
@@ -114,8 +115,12 @@ def video_to_frames(video,start,duration):
 	result = subprocess.run(["ffmpeg","-ss",start,"-t",duration,"-i",video,"-r",str(FRAME_RATE),"-s",SIZE,"-f","image2",FRAME_PATTERN],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
 @requires('ffmpeg')
-def frames_to_video(filename):
-	result = subprocess.run(["ffmpeg","-f","image2","-i",FRAME_PATTERN,"-c:v","libx264","-qp","0","-preset","fast","-pix_fmt","yuv444p","-r",str(FRAME_RATE),"-y",filename],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+def frames_to_video(frames,filename):
+	os.mkdir("frames")
+	for i,frame in enumerate(frames,start=1):
+		os.symlink("../%s" % frame,"frames/%s" % (FRAME_PATTERN % i))
+	result = subprocess.run(["ffmpeg","-f","image2","-i","frames/%s" % FRAME_PATTERN,"-c:v","libx264","-qp","0","-preset","fast","-pix_fmt","yuv444p","-r",str(FRAME_RATE),"-y",filename],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+	shutil.rmtree("frames")
 
 def clear_frame_files():
 	for filename in glob.glob(FRAME_GLOB):
@@ -166,6 +171,11 @@ def random_name(n=5):
 
 
 def calculate_exact_times(start_time,end_time,start_frame,end_frame):
+	"""
+	The problem with going back to the start video with these start and
+	stop times is that these times assumed a certain frame reate that the
+	source video might not be! It won't always be frame-accurate
+	"""
 	start = convert_time(start_time)
 
 	start += start_frame/(FRAME_RATE*1.0) #move start forward by however many chosen frames
@@ -229,18 +239,19 @@ def main():
 
 	start_frame,end_frame = choose_frames()
 
+	frames_to_video([FRAME_PATTERN % x for x in range(start_frame,end_frame)],TMP_VIDEO_NAME)
+
 	if not args.keep_frames:
 		clear_frame_files()
-	
-	start,end = calculate_exact_times(args.start,args.duration,start_frame,end_frame)
 
 	print("creating gifs...")
-	background_processes = make_all(video_name,start,end,args.output)
+	background_processes = make_all(TMP_VIDEO_NAME,"0","0",args.output)
 	print("processing...")
 	for pid in background_processes:
 		pid.wait()
 	print('cleaning up')
 	clear_palette_files()
+	os.remove(TMP_VIDEO_NAME)
 	print('done')
 
 
