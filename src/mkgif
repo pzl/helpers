@@ -33,7 +33,6 @@ import string, random
 
 """
 	@todo:
-		- take size argument
 		- fuzzing / quality slider?
 		- configurable frame rate (of pulling from vid, and output gif)  (-r N and -vf "fps=N")
 		- restore optimizer (gifsicle -O3)
@@ -41,7 +40,6 @@ import string, random
 """
 
 FRAME_RATE=25
-SIZE="1280x720"
 
 FRAME_PATTERN="frame-%04d.png"
 FRAME_GLOB="frame-*.png"
@@ -69,7 +67,8 @@ def parse_args():
 	#positional args
 	parser.add_argument('sources',metavar='SOURCE',nargs='+',help="Input to be converted. Can be Video file, YouTube URL or series of still images")
 	#flag arguments
-	parser.add_argument('-s','--start',metavar='TIME',default="0",help="start time (roughly, will ask for exact frame later)")
+	parser.add_argument('-s','--size',metavar="WxH",default="1280:-1",help="output dimensions. You may specify both axes, or use -1 in one to preserve aspect ratio")
+	parser.add_argument('-b','--begin',dest='start',metavar='TIME',default="0",help="start time (roughly, will ask for exact frame later)")
 	parser.add_argument('-d','--duration',metavar='TIME',default="5",help="duration (roughly, will ask for exact frame later)")
 	parser.add_argument('-o','--output',metavar='GIF_NAME',default="out.gif",help="Output gif name")
 	parser.add_argument('-k','--keep',dest='keep_frames',action='store_true',help="Keep (do not discard) PNG frames")
@@ -126,9 +125,9 @@ def video_filename(url):
 	return filename
 
 @requires('ffmpeg')
-def video_to_frames(video,start,duration):
+def video_to_frames(video,size,start,duration):
 	print('creating frames...')
-	result = subprocess.run(["ffmpeg","-ss",start,"-t",duration,"-i",video,"-r",str(FRAME_RATE),"-s",SIZE,"-f","image2",FRAME_PATTERN],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+	result = subprocess.run(["ffmpeg","-ss",start,"-t",duration,"-i",video,"-r",str(FRAME_RATE),"-vf","scale=%s:flags=lanczos" % size,"-f","image2",FRAME_PATTERN],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
 @requires('ffmpeg')
 def frames_to_video(frames,filename):
@@ -200,9 +199,9 @@ def calculate_exact_times(start_time,end_time,start_frame,end_frame):
 	
 	return ("%.03f" % start,"%.03f" % end)
 
-def make_all(video,start,end,filename):
+def make_all(video,size,start,end,filename):
 	pids=[]
-	simple = ffmpeg(video,start,end)
+	simple = ffmpeg(video,size,start,end)
 
 	pids += [simple("-gifflags","-transdiff","-y","01-notrans-%s" % filename)]
 	pids += [simple("-gifflags","+transdiff","-y","01-trans-%s" % filename)]
@@ -210,46 +209,46 @@ def make_all(video,start,end,filename):
 	#generate webm!
 	pids += [simple("-c:v","libvpx","-crf","4","-b:v","50M","-c:a","libvorbis","-an","-y","%s.webm" % filename.rsplit(".",1)[0])]
 
-	pids += [ffmpeg(video,start,end,':sws_dither=ed')("-y","02-sws_dither-%s" % filename)]
+	pids += [ffmpeg(video,size,start,end,':sws_dither=ed')("-y","02-sws_dither-%s" % filename)]
 
 	name=PALETTE_NAME % random_name()
-	ffmpeg(video,start,end,',palettegen')("-y",name,bg=False) #create palette
-	pids += [ffmpeg(video,start,end,' [x]; [x][1:v] paletteuse','-lavfi')("-i",name,"-y","03-palette-%s"%filename)]
+	ffmpeg(video,size,start,end,',palettegen')("-y",name,bg=False) #create palette
+	pids += [ffmpeg(video,size,start,end,' [x]; [x][1:v] paletteuse','-lavfi')("-i",name,"-y","03-palette-%s"%filename)]
 
 
-	pids += stats_mode(video,start,end,filename,"full") # overall palette quality
-	pids += stats_mode(video,start,end,filename,"diff") # care more about moving parts
+	pids += stats_mode(video,size,start,end,filename,"full") # overall palette quality
+	pids += stats_mode(video,size,start,end,filename,"diff") # care more about moving parts
 
 	return pids #return all the background processes we launched, so you can check when they're all done
 
 
-def stats_mode(video,start,end,filename,mode):
+def stats_mode(video,size,start,end,filename,mode):
 	pids=[]
 	diffusers = ("none","bayer:bayer_scale=1","bayer:bayer_scale=2","bayer:bayer_scale=3","floyd_steinberg","sierra2","sierra2_4a")
 
 	name=PALETTE_NAME % random_name()
-	ffmpeg(video,start,end,',palettegen=stats_mode=%s' % mode)("-y",name,bg=False) #create palette
-	pids += [ffmpeg(video,start,end,' [x]; [x][1:v] paletteuse','-lavfi')("-i",name,"-y","04-palette_%s-%s"%(mode,filename))] #base without diffusers
+	ffmpeg(video,size,start,end,',palettegen=stats_mode=%s' % mode)("-y",name,bg=False) #create palette
+	pids += [ffmpeg(video,size,start,end,' [x]; [x][1:v] paletteuse','-lavfi')("-i",name,"-y","04-palette_%s-%s"%(mode,filename))] #base without diffusers
 	for d in diffusers:
-		pids += [ffmpeg(video,start,end,' [x]; [x][1:v] paletteuse=dither=%s' % d,'-lavfi')("-i",name,"-y","05-palette_%s_%s-%s"%(mode,d,filename))]
+		pids += [ffmpeg(video,size,start,end,' [x]; [x][1:v] paletteuse=dither=%s' % d,'-lavfi')("-i",name,"-y","05-palette_%s_%s-%s"%(mode,d,filename))]
 	return pids
 
 @requires('ffmpeg')
-def ffmpeg(video,start,end,scaleopts='',flagname="-vf"):
-	scale = SIZE.replace('x',':')
+def ffmpeg(video,size,start,end,scaleopts='',flagname="-vf"):
 	def newfunc(*args,bg=True):
 		launch = subprocess.Popen if bg else subprocess.run
-		return launch(["ffmpeg","-v","warning","-ss",start,"-t",end,"-i",video,flagname,"scale=%s:flags=lanczos%s" % (scale,scaleopts),*args],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+		return launch(["ffmpeg","-v","warning","-ss",start,"-t",end,"-i",video,flagname,"scale=%s:flags=lanczos%s" % (size,scaleopts),*args],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 	return newfunc
 
 def main():
 	args = parse_args()
+	args.size = args.size.replace('x',':')
 	sources = validate_sources(args.sources)
 
 
 	if len(sources) == 1:
 		#video file
-		video_to_frames(sources[0],args.start,args.duration)
+		video_to_frames(sources[0],args.size,args.start,args.duration)
 
 		if args.frames_only:
 			sys.exit(0)
@@ -264,7 +263,7 @@ def main():
 		frames_to_video(sources,TMP_VIDEO_NAME)
 
 	print("creating gifs...")
-	background_processes = make_all(TMP_VIDEO_NAME,"0","0",args.output)
+	background_processes = make_all(TMP_VIDEO_NAME,args.size,"0","0",args.output)
 	print("processing...")
 	for pid in background_processes:
 		pid.wait()
