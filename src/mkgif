@@ -133,7 +133,7 @@ def video_to_frames(video,size,start,duration):
 def frames_to_video(frames,filename):
 	os.mkdir("frames")
 	for i,frame in enumerate(frames,start=1):
-		os.symlink("../%s" % frame,"frames/%s" % (FRAME_PATTERN % i))
+		os.symlink(os.path.abspath(frame),"frames/%s" % (FRAME_PATTERN % i))
 	result = subprocess.run(["ffmpeg","-f","image2","-i","frames/%s" % FRAME_PATTERN,"-c:v","libx264","-qp","0","-preset","fast","-pix_fmt","yuv444p","-r",str(FRAME_RATE),"-y",filename],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 	shutil.rmtree("frames")
 
