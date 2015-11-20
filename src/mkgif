@@ -73,6 +73,7 @@ def parse_args():
 	parser.add_argument('-o','--output',metavar='GIF_NAME',default="out.gif",help="Output gif name")
 	parser.add_argument('-k','--keep',dest='keep_frames',action='store_true',help="Keep (do not discard) PNG frames")
 	parser.add_argument('-f','--frames-only',dest='frames_only',action='store_true',help="Generate PNG frames only, then exit")
+	parser.add_argument('-tv','--to-video',dest='video_only',action='store_true',help="Create video clip only, and exit")
 	#parser.add_argument('--optimize',dest='optimize',action='store_true',help="generate gifsicle optimized gifs")
 
 	return parser.parse_args()
@@ -261,6 +262,9 @@ def main():
 			clear_frame_files()
 	else:
 		frames_to_video(sources,TMP_VIDEO_NAME)
+
+	if args.video_only:
+		sys.exit(0)
 
 	print("creating gifs...")
 	background_processes = make_all(TMP_VIDEO_NAME,args.size,"0","0",args.output)
