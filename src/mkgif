@@ -34,12 +34,9 @@ import string, random
 """
 	@todo:
 		- fuzzing / quality slider?
-		- configurable frame rate (of pulling from vid, and output gif)  (-r N and -vf "fps=N")
 		- restore optimizer (gifsicle -O3)
 		- frame skipping+speed reduction for some savings (affects frame rate)
 """
-
-FRAME_RATE=25
 
 FRAME_PATTERN="frame-%04d.png"
 FRAME_GLOB="frame-*.png"
@@ -74,6 +71,7 @@ def parse_args():
 	parser.add_argument('-k','--keep',dest='keep_frames',action='store_true',help="Keep (do not discard) PNG frames")
 	parser.add_argument('-f','--frames-only',dest='frames_only',action='store_true',help="Generate PNG frames only, then exit")
 	parser.add_argument('-tv','--to-video',dest='video_only',action='store_true',help="Create video clip only, and exit")
+	parser.add_argument('-r','--rate',metavar='RATE',dest='frame_rate',default=None,help="Use specific frame rate")
 	#parser.add_argument('--optimize',dest='optimize',action='store_true',help="generate gifsicle optimized gifs")
 
 	return parser.parse_args()
@@ -126,16 +124,25 @@ def video_filename(url):
 	return filename
 
 @requires('ffmpeg')
-def video_to_frames(video,size,start,duration):
+def video_to_frames(video,size,start,duration,rate=None):
 	print('creating frames...')
-	result = subprocess.run(["ffmpeg","-ss",start,"-t",duration,"-i",video,"-r",str(FRAME_RATE),"-vf","scale=%s:flags=lanczos" % size,"-f","image2",FRAME_PATTERN],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+	args = ["ffmpeg","-ss",start,"-t",duration,"-i",video,"-vf","scale=%s:flags=lanczos" % size,"-f","image2",FRAME_PATTERN]
+	if rate:
+		args.insert(7,"-r")
+		args.insert(8,str(rate))
+	result = subprocess.run(args,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
 @requires('ffmpeg')
-def frames_to_video(frames,filename):
+def frames_to_video(frames,filename,rate=None):
+
+	if not rate:
+		rate = '24'
+
 	os.mkdir("frames")
 	for i,frame in enumerate(frames,start=1):
 		os.symlink(os.path.abspath(frame),"frames/%s" % (FRAME_PATTERN % i))
-	result = subprocess.run(["ffmpeg","-f","image2","-i","frames/%s" % FRAME_PATTERN,"-c:v","libx264","-qp","0","-preset","fast","-pix_fmt","yuv444p","-r",str(FRAME_RATE),"-y",filename],check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+	args = ["ffmpeg","-f","image2","-i","frames/%s" % FRAME_PATTERN,"-c:v","libx264","-qp","0","-preset","fast","-pix_fmt","yuv444p","-r",str(rate),"-y",filename]
+	result = subprocess.run(args,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 	shutil.rmtree("frames")
 
 def clear_frame_files():
@@ -186,7 +193,7 @@ def random_name(n=5):
 	return ''.join(random.choice(string.ascii_letters) for _ in range(n))
 
 
-def calculate_exact_times(start_time,end_time,start_frame,end_frame):
+def calculate_exact_times(rate,start_time,end_time,start_frame,end_frame):
 	"""
 	The problem with going back to the start video with these start and
 	stop times is that these times assumed a certain frame reate that the
@@ -194,8 +201,8 @@ def calculate_exact_times(start_time,end_time,start_frame,end_frame):
 	"""
 	start = convert_time(start_time)
 
-	start += start_frame/(FRAME_RATE*1.0) #move start forward by however many chosen frames
-	end = (end_frame - start_frame - 1)/(FRAME_RATE*1.0) #original chosen time can be totally discarded
+	start += start_frame/(rate*1.0) #move start forward by however many chosen frames
+	end = (end_frame - start_frame - 1)/(rate*1.0) #original chosen time can be totally discarded
 	# duration is simply relative to new start. get there just by frame counting
 	
 	return ("%.03f" % start,"%.03f" % end)
@@ -246,22 +253,24 @@ def main():
 	args.size = args.size.replace('x',':')
 	sources = validate_sources(args.sources)
 
+	if args.frame_rate:
+		args.frame_rate = float(args.frame_rate)
 
 	if len(sources) == 1:
 		#video file
-		video_to_frames(sources[0],args.size,args.start,args.duration)
+		video_to_frames(sources[0],args.size,args.start,args.duration,args.frame_rate)
 
 		if args.frames_only:
 			sys.exit(0)
 
 		start_frame,end_frame = choose_frames()
 
-		frames_to_video([FRAME_PATTERN % x for x in range(start_frame,end_frame)],TMP_VIDEO_NAME)
+		frames_to_video([FRAME_PATTERN % x for x in range(start_frame,end_frame)],TMP_VIDEO_NAME,args.frame_rate)
 
 		if not args.keep_frames:
 			clear_frame_files()
 	else:
-		frames_to_video(sources,TMP_VIDEO_NAME)
+		frames_to_video(sources,TMP_VIDEO_NAME,args.frame_rate)
 
 	if args.video_only:
 		sys.exit(0)
