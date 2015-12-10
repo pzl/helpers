@@ -32,10 +32,47 @@ else
     #sudo mount -o rw,suid,relatime,data=ordered -t ext4 /dev/sdf3 /run/media/dan/overflow
 fi
 
-#Networking setup
-sudo brctl addbr br0
-sudo ifconfig br0 10.0.2.1/24
-sudo ifconfig
+#####
+# Networking setup
+####
 
-sudo iptables -t nat -A POSTROUTING -s 10.0.2.2/24 -j MASQUERADE
-sudo sysctl net.ipv4.ip_forward=1
+# OLD METHOD USING WIFI
+#sudo brctl addbr br0
+#sudo ifconfig br0 10.0.2.1/24
+#sudo ifconfig
+
+#sudo iptables -t nat -A POSTROUTING -s 10.0.2.2/24 -j MASQUERADE
+#sudo sysctl net.ipv4.ip_forward=1
+
+# NEW METHOD ON WIRED:
+sudo netctl start lxcbridge
+# /etc/netctl/lxcbridge:
+#Description="LXC bridge"
+#Interface=br0
+#Connection=bridge
+#BindsToInterfaces=('enp14s0')
+#IP=dhcp
+#SkipForwardingDelay=yes
+
+
+
+
+
+#things to do on setting up new machine:
+#   Config file:   
+#   lxc.network.link = br0
+#   lxc.network.name = enp14s0
+#   lxc.network.mtu = 1500
+#   lxc.network.ipv4 = 192.168.1.99/24
+#   lxc.network.ipv4.gateway = 192.168.1.1
+
+#   In machine:
+#   apt-get update
+#   apt-get upgrade
+#   apt-get install sudo vim inetutils-ping dnsutils curl
+#   useradd -m -G sudo -s /bin/bash dan
+#   passwd dan
+
+
+# debian lamp stack packages: mysql-server apache2 php5 php5-mysql libapache2-mod-php5
+
