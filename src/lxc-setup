@@ -75,4 +75,4 @@ sudo netctl start lxcbridge
 
 
 # debian lamp stack packages: mysql-server apache2 php5 php5-mysql libapache2-mod-php5
-
+# apache: don't forget to enable mods (rewrite) and a2ensite, etc
