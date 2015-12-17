@@ -56,6 +56,8 @@ case "$INST" in
         RULE+=("manage=off") ;;
     blue)
         RULE+=("state=floating") ;;
+    Blender)
+        RULE+=("locked=on") ;; #prevent accidental closing
 esac
 
 # Debug:
