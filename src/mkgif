@@ -72,6 +72,7 @@ def parse_args():
 	parser.add_argument('-f','--frames-only',dest='frames_only',action='store_true',help="Generate PNG frames only, then exit")
 	parser.add_argument('-tv','--to-video',dest='video_only',action='store_true',help="Create video clip only, and exit")
 	parser.add_argument('-r','--rate',metavar='RATE',dest='frame_rate',default=None,help="Use specific frame rate")
+	parser.add_argument('--webm',dest='webm_only',action='store_true',help="Only generate .webm, not .gifs")
 	#parser.add_argument('--optimize',dest='optimize',action='store_true',help="generate gifsicle optimized gifs")
 
 	return parser.parse_args()
@@ -229,6 +230,9 @@ def make_all(video,size,start,end,filename):
 
 	return pids #return all the background processes we launched, so you can check when they're all done
 
+def make_webm(video,size,start,end,filename):
+	pid = ffmpeg(video,size,start,end)("-c:v","libvpx","-crf","4","-b:v","50M","-c:a","libvorbis","-an","-y","%s.webm" % filename.rsplit(".",1)[0])
+	return pid
 
 def stats_mode(video,size,start,end,filename,mode):
 	pids=[]
@@ -255,6 +259,12 @@ def main():
 
 	if args.frame_rate:
 		args.frame_rate = float(args.frame_rate)
+
+	if args.webm_only:
+		print("creating webm from %s" % (sources[0],))
+		pid = make_webm(sources[0],args.size,"0","0",args.output)
+		pid.wait()
+		return
 
 	if len(sources) == 1:
 		#video file
