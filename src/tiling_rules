@@ -48,7 +48,7 @@ done
 
 #custom rules
 case "$INST" in
-	Google-chrome*|google-chrome*|nitrogen|gimp*|ruler|gbdfed|zoom)
+	Google-chrome*|google-chrome*|nitrogen|gimp*|ruler|gbdfed|zoom|simulator.exe)
 		RULE+=("state=floating") ;;
 	BSPWM_FRAME|bspwm_frame)
 		RULE+=("frame=on") ;;
