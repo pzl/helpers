@@ -70,6 +70,7 @@ def parse_args():
 	parser.add_argument('-o','--output',metavar='GIF_NAME',default="out.gif",help="Output gif name")
 	parser.add_argument('-k','--keep',dest='keep_frames',action='store_true',help="Keep (do not discard) PNG frames")
 	parser.add_argument('-f','--frames-only',dest='frames_only',action='store_true',help="Generate PNG frames only, then exit")
+	parser.add_argument('-nf','--no-frames',dest='no_frames',action='store_true',help="Convert to gif from source video, do not choose frames")
 	parser.add_argument('-tv','--to-video',dest='video_only',action='store_true',help="Create video clip only, and exit")
 	parser.add_argument('-r','--rate',metavar='RATE',dest='frame_rate',default=None,help="Use specific frame rate")
 	parser.add_argument('--webm',dest='webm_only',action='store_true',help="Only generate .webm, not .gifs")
@@ -257,6 +258,10 @@ def main():
 	args.size = args.size.replace('x',':')
 	sources = validate_sources(args.sources)
 
+	if args.no_frames and args.frames_only:
+		print("-nf and -f cannot be used together.")
+		sys.exit(1)
+
 	if args.frame_rate:
 		args.frame_rate = float(args.frame_rate)
 
@@ -266,19 +271,24 @@ def main():
 		pid.wait()
 		return
 
+	source_video=TMP_VIDEO_NAME
+
 	if len(sources) == 1:
 		#video file
-		video_to_frames(sources[0],args.size,args.start,args.duration,args.frame_rate)
 
-		if args.frames_only:
-			sys.exit(0)
+		if args.no_frames:
+			source_video=sources[0]
+		else:
+			video_to_frames(sources[0],args.size,args.start,args.duration,args.frame_rate)
 
-		start_frame,end_frame = choose_frames()
+			if args.frames_only:
+				sys.exit(0)
 
-		frames_to_video([FRAME_PATTERN % x for x in range(start_frame,end_frame)],TMP_VIDEO_NAME,args.frame_rate)
+			start_frame,end_frame = choose_frames()
+			frames_to_video([FRAME_PATTERN % x for x in range(start_frame,end_frame)],TMP_VIDEO_NAME,args.frame_rate)
 
-		if not args.keep_frames:
-			clear_frame_files()
+			if not args.keep_frames:
+				clear_frame_files()
 	else:
 		frames_to_video(sources,TMP_VIDEO_NAME,args.frame_rate)
 
@@ -286,13 +296,14 @@ def main():
 		sys.exit(0)
 
 	print("creating gifs...")
-	background_processes = make_all(TMP_VIDEO_NAME,args.size,"0","0",args.output)
+	background_processes = make_all(source_video,args.size,"0","0",args.output)
 	print("processing...")
 	for pid in background_processes:
 		pid.wait()
 	print('cleaning up')
 	clear_palette_files()
-	os.remove(TMP_VIDEO_NAME)
+	if os.path.exists(TMP_VIDEO_NAME):
+		os.remove(TMP_VIDEO_NAME)
 	print('done')
 
 
