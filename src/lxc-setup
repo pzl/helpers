@@ -44,8 +44,16 @@ fi
 #sudo iptables -t nat -A POSTROUTING -s 10.0.2.2/24 -j MASQUERADE
 #sudo sysctl net.ipv4.ip_forward=1
 
+
+# NEW-NEW method on wired, using networkmanager instead of netcl
+CON_NAME="3d49251c-45e9-4aed-beb7-2b036f121ec7"
+
+if ! nmcli con show $CON_NAME | grep activated >/dev/null 2>&1; then
+    nmcli con up $CON_NAME
+fi
+
 # NEW METHOD ON WIRED:
-sudo netctl start lxcbridge
+#sudo netctl start lxcbridge
 # /etc/netctl/lxcbridge:
 #Description="LXC bridge"
 #Interface=br0
