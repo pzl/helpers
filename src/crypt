@@ -21,24 +21,10 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-
 #exit immediately for any failed commands.
 #prevents deleting the cleartext if the encryption command failed,
 #which would leave you with no data
 set -e
-
-
-#get password for en- or de-crypting
-getpass() {
-    #alternative (bash-specific): read -s
-    stty_save=`stty -g` #save terminal settings
-    stty -echo          #turn off echoing
-    read passwd
-    stty $stty_save     #restore settings
-}
-
-
-
 
 #check for `crypt -h`, print and exit
 if [ "$1" == "-h" ] || [ "$1" == "--help" ]; then
@@ -56,64 +42,29 @@ if [ ! -e "$FILE" -o ! -f "$FILE" -a ! -d "$FILE"  -o ! -r "$FILE" -o ! -s "$FIL
     exit 1
 fi
 
-
-#get output name, if given
-if [ -z "$2" ]; then
-    OUTPUT="$2"
-fi
-
-
-
-#to get command-line prompt in gpgv2 and not ncurses-based:
-# > gpg-agent.conf
-# pinentry-program /usr/bin/pinentry-curses
-# allow-loopback-pinentry
-#
-#and then use `gpg --pinentry-mode loopback ...` and you will get a prompt
-#here, we prompt earlier and pass it as an option using --passphrase, but that is not required.
-
+# set preferred pinentry mode. pinentry-curses and pinentry-tty are console-based
 if file -b "$FILE" | grep "GPG.*encrypted" >/dev/null 2>&1; then
     #input file is already encrypted, we are decrypting
-    printf "Decrypting ${FILE}. Enter Password: "
-    getpass
-    printf '\n'
-
     echo "decrypting.."
-    gpg --pinentry-mode loopback --passphrase "$passwd" -d -o "${OUTPUT:-${FILE%.gpg}}" "${FILE}"
+    gpg "${FILE}"
 
     #if bzipped, we're not done. was probably a dir
-    if file -b "${OUTPUT:-${FILE%.gpg}}" | grep "^bzip2" >/dev/null 2>&1; then
+    if file -b "${FILE%.gpg}" | grep "^bzip2" >/dev/null 2>&1; then
         echo "expanding directory.."
-        tar -xjf "${OUTPUT:-${FILE%.gpg}}"
+        tar -xjf "${FILE%.gpg}"
     fi
-
 
     rm -rf "$FILE"
-
 else
-    printf "Encrypting ${FILE}. Enter Password: "
-    getpass
-    firstpass=$passwd
-    printf '\nRepeat: '
-    getpass
-    printf '\n'
-
-    if [ "$firstpass" != "$passwd" ]; then
-        echo "passwords do not match"
-        exit 1
-    fi
-
-
-    #input file is not encrypted, we will encrypt
-    echo "encrypting.."
+    echo "Encrypting ${FILE}."
 
     #directories can't be gpg'd directly. tar first
     if [ -d "$FILE" ];then
         tar -cjf "${FILE}.tar.bz" "$FILE"
-        gpg --pinentry-mode loopback --passphrase "$passwd" -c --cipher-algo aes256 -z 0 -o "${OUTPUT:-${FILE}.gpg}" "${FILE}.tar.bz"
+        gpg -c --cipher-algo aes256 -z 0 -o "${FILE}.gpg" "${FILE}.tar.bz"
         rm -rf "${FILE}.tar.bz"
     else
-        gpg --pinentry-mode loopback --passphrase "$passwd" -c --cipher-algo aes256  --compress-algo bzip2 -z 9 -o "${OUTPUT:-${FILE}.gpg}" "${FILE}"
+        gpg -c --cipher-algo aes256  --compress-algo bzip2 -z 9 "${FILE}"
     fi
     rm -rf "$FILE"
 fi
