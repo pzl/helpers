@@ -77,7 +77,7 @@ fi
 #   In machine:
 #   apt-get update
 #   apt-get upgrade
-#   apt-get install sudo vim inetutils-ping dnsutils curl
+#   apt-get install sudo vim inetutils-ping dnsutils curl bash-completion
 #   useradd -m -G sudo -s /bin/bash dan
 #   passwd dan
 
