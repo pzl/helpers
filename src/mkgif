@@ -290,7 +290,7 @@ def main():
 			if not args.keep_frames:
 				clear_frame_files()
 	else:
-		frames_to_video(sources,TMP_VIDEO_NAME,args.frame_rate)
+		frames_to_video(sources,args.output,args.frame_rate)
 
 	if args.video_only:
 		sys.exit(0)
