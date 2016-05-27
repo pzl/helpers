@@ -135,7 +135,7 @@ def video_to_frames(video,size,start,duration,rate=None):
 	result = subprocess.run(args,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 
 @requires('ffmpeg')
-def frames_to_video(frames,filename,rate=None):
+def frames_to_video(frames,filename,rate=None,size="1280:720"):
 
 	if not rate:
 		rate = '24'
@@ -143,7 +143,7 @@ def frames_to_video(frames,filename,rate=None):
 	os.mkdir("frames")
 	for i,frame in enumerate(frames,start=1):
 		os.symlink(os.path.abspath(frame),"frames/%s" % (FRAME_PATTERN % i))
-	args = ["ffmpeg","-f","image2","-i","frames/%s" % FRAME_PATTERN,"-c:v","libx264","-qp","0","-preset","fast","-pix_fmt","yuv444p","-r",str(rate),"-y","%s.mp4" % filename.rsplit(".",1)[0]]
+	args = ["ffmpeg","-f","image2","-i","frames/%s" % FRAME_PATTERN,"-vf","scale=%s:flags=lanczos" % size,"-c:v","libx264","-qp","0","-preset","fast","-pix_fmt","yuv444p","-r",str(rate),"-y","%s.mp4" % filename.rsplit(".",1)[0]]
 	result = subprocess.run(args,check=True,stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
 	shutil.rmtree("frames")
 
@@ -290,7 +290,7 @@ def main():
 			if not args.keep_frames:
 				clear_frame_files()
 	else:
-		frames_to_video(sources,args.output,args.frame_rate)
+		frames_to_video(sources,args.output,args.frame_rate,args.size)
 
 	if args.video_only:
 		sys.exit(0)
