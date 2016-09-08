@@ -100,7 +100,7 @@ def main():
     keys={}
     with open(os.path.expanduser("~/.config/.2steps"),"r") as f:
         for line in f.read().splitlines():
-            k,v = line.split('=')
+            k,v = line.split('=',1)
             keys[k.strip().strip('"')] = v.strip().strip('"')
 
     if len(sys.argv) < 2:
