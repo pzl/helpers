@@ -60,9 +60,7 @@ else
 
     #directories can't be gpg'd directly. tar first
     if [ -d "$FILE" ];then
-        tar -cjf "${FILE}.tar.bz" "$FILE"
-        gpg -c --cipher-algo aes256 -z 0 -o "${FILE}.gpg" "${FILE}.tar.bz"
-        rm -rf "${FILE}.tar.bz"
+        tar -cj "$FILE" | gpg -c --cipher-algo aes256 -z 0 -o "${FILE}.gpg"
     else
         gpg -c --cipher-algo aes256  --compress-algo bzip2 -z 9 "${FILE}"
     fi
