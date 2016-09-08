@@ -23,11 +23,12 @@
 
 
 readonly ID="$1"
-readarray -t PROPS < <(xwinfo -its $1)
+readarray -t PROPS < <(xwinfo -cints $1)
 
-INST=${PROPS[0]}
-TYPE=${PROPS[1]}
-STATE=(${PROPS[2]})
+NAME=${PROPS[2]}
+INST=${PROPS[1]}
+TYPE=${PROPS[3]}
+STATE=(${PROP[4]})
 
 RULE=()
 
@@ -42,13 +43,19 @@ for s in $STATE; do
 	case $s in
 		sticky)					RULE+=("sticky=on") ;;
 		fullscreen)				RULE+=("state=fullscreen") ;;
+        above)                  RULE+=("layer=above") ;;
 	esac
 done
 
 
+case "$NAME" in
+    'Poly Bridge'|'Unturned 3'|RaceTheSun|Broforce|'TowerFall Ascension'|'ShellShock Live')
+        RULE+=("state=fullscreen") ;;
+esac
+
 #custom rules
 case "$INST" in
-	Google-chrome*|google-chrome*|nitrogen|gimp*|ruler|gbdfed|zoom|simulator.exe)
+	Google-chrome*|google-chrome*|nitrogen|gimp*|ruler|gbdfed|zoom|simulator.exe|pinentry*)
 		RULE+=("state=floating") ;;
 	BSPWM_FRAME|bspwm_frame)
 		RULE+=("frame=on") ;;
