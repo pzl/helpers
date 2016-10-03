@@ -29,6 +29,7 @@ import base64
 import hashlib
 import datetime
 import time
+from subprocess import call
 
 usage = """
     2step [OPTIONS] PROVIDER
@@ -36,10 +37,9 @@ usage = """
 """
 
 
-class TOTP(object):
-    """docstring for TOTP"""
+class OTP(object):
+    """docstring for OTP"""
     
-    interval=30 #seconds
     digest=hashlib.sha1
     digits=6 #number of integers in output code
 
@@ -54,27 +54,18 @@ class TOTP(object):
     
     
     def __init__(self, secret):
-        super(TOTP, self).__init__()
+        super(OTP, self).__init__()
         self.secret = secret
 
-    def _timecode(self):
-        #get the time portion of *T*OTP
-        now = datetime.datetime.now()
-        i = time.mktime(now.timetuple())
-        timecode = int(i/self.interval)
-        return timecode
-        
-    def hash(self):
-        #get current time to base code on
-        timecode = self._timecode()
-
+    def int_to_bytes(self, i):
         res = []
-        while timecode != 0:
-            res.append(chr(timecode & 0xFF))
-            timecode = timecode >> 8
-        bytestring=''.join(reversed(res)).rjust(8,'\0') #padding=8
+        while i != 0:
+            res.append(chr(i & 0xFF))
+            i = i >> 8
+        return ''.join(reversed(res)).rjust(8,'\0') #padding=8    
 
-
+    def hash(self, seed):
+        bytestring = self.int_to_bytes(seed)
         hmac_hash = hmac.new(
             self.secret,
             bytestring,
@@ -93,24 +84,61 @@ class TOTP(object):
 
 
 
+class TOTP(OTP):
+    interval=30 #seconds
 
+    def _timecode(self):
+        #get the time portion of *T*OTP
+        now = datetime.datetime.now()
+        i = time.mktime(now.timetuple())
+        timecode = int(i/self.interval)
+        return timecode
+
+
+    def hash(self):
+        #get current time to base code on
+        timecode = self._timecode()
+        super(TOTP, self).hash(timecode)
+
+
+class HOTP(OTP):
+    def __init__(self, secret, count):
+        super(HOTP, self).__init__(secret)
+        self.count = int(count)
+
+    def hash(self):
+        super(HOTP, self).hash(self.count)
 
 
 def main():
+    if len(sys.argv) < 2:
+        sys.exit("Error: argument required (provider)" + usage)
+
     keys={}
     with open(os.path.expanduser("~/.config/.2steps"),"r") as f:
         for line in f.read().splitlines():
             k,v = line.split('=',1)
             keys[k.strip().strip('"')] = v.strip().strip('"')
 
-    if len(sys.argv) < 2:
-        sys.exit("Error: argument required (provider)" + usage)
+    provider = sys.argv[1].strip()
 
-    if not sys.argv[1].strip() in keys:
-        sys.exit("No provider found: '{}'".format(sys.argv[1]))
+    if not provider in keys:
+        sys.exit("No provider found: '{}'".format(provider) )
 
-    totp = TOTP(keys[sys.argv[1].strip()])
-    totp.hash()
+    if not ':' in keys[provider]:
+        otp = TOTP(keys[provider])
+    else:
+        secret,count = keys[provider].split(':')
+        otp = HOTP(secret, count)
+
+    otp.hash()
+
+    # for HOTP, increment the counter. You find me a python one-liner to replace just the right line this easy and I'll remove sed
+    if isinstance(otp,HOTP):
+        call(["sed","-e","s/\("+secret+"\):[0-9]*/\\1:"+str(int(count)+1)+"/","-i",os.path.expanduser("~/.config/.2steps")])
+        
+
+
 
 
 if __name__ == '__main__':
