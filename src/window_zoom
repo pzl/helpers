@@ -1,0 +1,20 @@
+#!/bin/bash
+
+set -e
+set -x
+
+PAD="$(bspc config -m focused window_gap)"
+BORDER="$(bspc config border_width)"
+
+
+if [ "$(bspc config -m focused left_padding)" -ne 0 ]; then
+    bspc config -m focused top_padding 0
+    bspc config -m focused left_padding 0
+    bspc config -m focused right_padding 0
+    bspc config -m focused bottom_padding 0
+else
+    bspc config -m focused top_padding "-$PAD"
+    bspc config -m focused left_padding "-$PAD"
+    bspc config -m focused right_padding "-$PAD"
+    bspc config -m focused bottom_padding "-$PAD"
+fi
