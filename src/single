@@ -1,7 +1,7 @@
 #!/bin/sh
 
 killall tint2
-kill "$(ps aux | grep statbar | grep 3840 | awk '{print $2}')"
+pkill -f "^second-bar"
 
 xrandr \
     --output DVI-D-0 \

@@ -35,6 +35,6 @@ nitrogen --restore >/dev/null 2>&1
 
 bspc config -m ^3 top_padding 20
 
-~/dev/statbar/statbar 1920x22+3840+0 &
+( exec -a "second-bar" ~/dev/statbar/statbar 1920x22+3840+0 ) & disown
 
 #~/.config/bspwm/bspwmrc
