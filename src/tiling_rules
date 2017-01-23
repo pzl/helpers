@@ -25,8 +25,8 @@
 readonly ID="$1"
 readarray -t PROPS < <(xwinfo -cints $1)
 
-NAME=${PROPS[2]}
 INST=${PROPS[1]}
+NAME=${PROPS[2]}
 TYPE=${PROPS[3]}
 STATE=(${PROP[4]})
 
@@ -65,6 +65,11 @@ case "$INST" in
         RULE+=("state=floating") ;;
     Blender)
         RULE+=("locked=on") ;; #prevent accidental closing
+    term-float)
+        RULE+=("state=floating")
+        RULE+=("layer=above")
+        RULE+=("locked=on")
+        ;;
 esac
 
 # Debug:
