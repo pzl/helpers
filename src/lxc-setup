@@ -84,4 +84,5 @@ fi
 
 
 # debian lamp stack packages: mysql-server apache2 php5 php5-mysql libapache2-mod-php5
+# for composer: php5-curl php5-mcrypt
 # apache: don't forget to enable mods (rewrite) and a2ensite, etc
