@@ -2,11 +2,11 @@
 
 readonly fname="$1"
 
-font="$(xlsfonts | grep  "medium\|normal" | grep "iso10646" | grep "$fname" | tail -n 1)"
+font="$(xlsfonts | grep -e  "$fname.*\(medium\|normal\).*iso10646" | tail -n 1)"
 
 if [ -z "$font" ]; then
     #try again with looser parameters
-    font="$(xlsfonts | grep "medium\|normal" | grep "$fname" | tail -n 1)"
+    font="$(xlsfonts | grep "$fname.*\(medium\|normal\)" | tail -n 1)"
 
     if [ -z "$font" ]; then
         echo "Could not find font by name: $fname" >&2
