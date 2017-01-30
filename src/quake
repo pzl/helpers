@@ -1,16 +1,22 @@
 #!/bin/bash
 
+position(){
+    xdotool search --sync --name dropterm windowmove --sync 0 0 windowsize --sync --usehints 50% 30%
+}
+
 
 main(){
+    local wid=$(xdotool search -name dropterm)
+    local exists=$?
 
-    if xdotool search -name dropterm >/dev/null 2>&1; then
-        if xprop -name dropterm WM_STATE | grep Withdrawn >/dev/null 2>&1; then
-            xdotool search -name dropterm windowmap
+    if [ $exists -eq 0  ]; then
+        if  xwininfo -id $wid | grep "Map State: IsUnMapped" >/dev/null 2>&1; then
+            xdotool windowmap --sync $wid  #&& position
         else
-            xdotool search -name dropterm windowunmap
+            xdotool windowunmap $wid
         fi
     else
-        terminator -r quake -l quake && xdotool search --sync --name dropterm windowmove --sync 0 0 windowsize --sync --usehints 50% 30%
+        terminator -r quake -l quake && position 
     fi
 
 }
