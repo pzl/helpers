@@ -1,0 +1,18 @@
+#!/bin/bash
+
+
+main(){
+
+    if xdotool search -name dropterm >/dev/null 2>&1; then
+        if xprop -name dropterm WM_STATE | grep Withdrawn >/dev/null 2>&1; then
+            xdotool search -name dropterm windowmap
+        else
+            xdotool search -name dropterm windowunmap
+        fi
+    else
+        terminator -r quake -l quake && xdotool search --sync --name dropterm windowmove --sync 0 0 windowsize --sync --usehints 50% 30%
+    fi
+
+}
+
+main $@

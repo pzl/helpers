@@ -23,12 +23,14 @@
 
 
 readonly ID="$1"
-readarray -t PROPS < <(xwinfo -cints $1)
+readarray -t PROPS < <(xwinfo -cints "$ID")
+
 
 INST=${PROPS[1]}
 NAME=${PROPS[2]}
 TYPE=${PROPS[3]}
 STATE=(${PROP[4]})
+ROLE=$( xprop -id "$ID" '=$0' WM_WINDOW_ROLE | grep = | cut -d= -f2 | tr -d '"' )
 
 RULE=()
 
@@ -65,7 +67,10 @@ case "$INST" in
         RULE+=("state=floating") ;;
     Blender)
         RULE+=("locked=on") ;; #prevent accidental closing
-    term-float)
+esac
+
+case "$ROLE" in
+    quake) #terminal drop-down aka quake-mode
         RULE+=("state=floating")
         RULE+=("layer=above")
         RULE+=("locked=on")
@@ -73,6 +78,6 @@ case "$INST" in
 esac
 
 # Debug:
-#echo "got ID: <$1> class <$2> instance <$3> and read -its as <$INST><$TYPE><$STATE> and then gave as output: ${RULE[*]}" >> ~/tmp/bspwm-tiling
+#echo -e "got ID: <$1> class <$2> instance <$3> and read -its as\ninst:<$INST>\ntype:<$TYPE>\nstate:<$STATE>\nname:<$NAME>\nrole:<$ROLE>\n and then gave as output: ${RULE[*]}"
 
 echo "${RULE[*]}"
