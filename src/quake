@@ -1,22 +1,26 @@
 #!/bin/bash
 
 position(){
-    xdotool search --sync --name dropterm windowmove --sync 0 0 windowsize --sync --usehints 50% 30%
+    local DIM
+    readarray -t DIM < <(bspc query -T -m | jq '.rectangle | .[]')
+    xdo move -x ${DIM[0]} -y ${DIM[1]} $1 &
+    xdo resize -w ${DIM[2]} -h 400 $1 &
+    xdo activate $1 &
 }
 
 
 main(){
     local wid=$(xdotool search -name dropterm)
-    local exists=$?
 
-    if [ $exists -eq 0  ]; then
-        if  xwininfo -id $wid | grep "Map State: IsUnMapped" >/dev/null 2>&1; then
-            xdotool windowmap --sync $wid  #&& position
+    if [ -n "$wid" ]; then
+        if xwininfo -id $wid | grep "Map State: IsUnMapped" >/dev/null 2>&1; then
+            xdotool windowmap --sync $wid
+            position $wid
         else
             xdotool windowunmap $wid
         fi
     else
-        terminator -r quake -l quake && position 
+        terminator -r quake -l quake && position $(xdotool search -name dropterm)
     fi
 
 }

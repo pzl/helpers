@@ -74,6 +74,7 @@ case "$ROLE" in
         RULE+=("state=floating")
         RULE+=("layer=above")
         RULE+=("locked=on")
+        RULE+=("focus=on")
         ;;
 esac
 
