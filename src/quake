@@ -10,7 +10,7 @@ position(){
 
 
 main(){
-    local wid=$(xdotool search -name dropterm)
+    local wid=$(xdotool search --limit 1 --name dropterm)
 
     if [ -n "$wid" ]; then
         if xwininfo -id $wid | grep "Map State: IsUnMapped" >/dev/null 2>&1; then
@@ -20,7 +20,7 @@ main(){
             xdotool windowunmap $wid
         fi
     else
-        terminator -r quake -l quake && position $(xdotool search -name dropterm)
+        terminator -r quake -l quake && position $(xdotool search --limit 1 --name dropterm)
     fi
 
 }
