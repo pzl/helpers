@@ -67,6 +67,10 @@ case "$INST" in
         RULE+=("state=floating") ;;
     Blender)
         RULE+=("locked=on") ;; #prevent accidental closing
+    stalonetray)
+        RULE+=("state=floating")
+        RULE+=("layer=above")
+        ;;
 esac
 
 case "$ROLE" in

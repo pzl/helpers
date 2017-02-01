@@ -1,6 +1,5 @@
 #!/bin/sh
 
-killall tint2
 pkill -f "^second-bar"
 
 xrandr \
@@ -9,34 +8,6 @@ xrandr \
     --output DVI-I-1 \
         --off
 
-<<COMMENT
-    --output DP-1 \
-        --mode 1920x1080 \
-        --pos 0x0 \
-        --rotate normal \
-    --output HDMI-0 \
-        --mode 1920x1080 \
-        --pos 1920x0 \
-        --rotate normal \
-    --output DVI-I-0 \
-        --off \
-    --output DP-0 \
-        --off
-COMMENT
-
-
-bspc monitor ^1 -d i ii iii
-#bspc monitor ^1 -a a
-#bspc monitor ^1 -r a
-
-tint2 & disown
 nitrogen --restore
 
-#killall tint2
-
-#bspc monitor ^1 -a A
-#bspc monitor ^1 -r A
-
-#tint2 &
-
-#~/.config/bspwm/bspwmrc
+~/.config/bspwm/bspwmrc
