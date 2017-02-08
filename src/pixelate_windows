@@ -43,8 +43,14 @@ def xcb_fetch_windows():
     attributes = x.core.GetWindowAttributes(child).reply()
     if attributes.map_state != XCB_MAP_STATE_VIEWABLE:
       continue
+    
+    geo = x.core.GetGeometry(child).reply()
+    if geo.width <3 or geo.height<3:
+        continue
 
-    rects += [x.core.GetGeometry(child).reply()]
+    #cls = x.core.GetProperty(False,child,Atom.WM_CLASS,GetPropertyType.Any,0,2**31-1).reply().value.to_utf8()
+
+    rects += [geo]
 
   return rects
 
