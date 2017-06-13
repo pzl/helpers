@@ -46,10 +46,11 @@ fi
 
 
 # NEW-NEW method on wired, using networkmanager instead of netcl
-CON_NAME="3d49251c-45e9-4aed-beb7-2b036f121ec7"
+CON_NAME="Bridge connection 1"
 
-if ! nmcli con show $CON_NAME | grep activated >/dev/null 2>&1; then
-    nmcli con up $CON_NAME
+if ! nmcli -t -f general.state con show "$CON_NAME" | grep activated >/dev/null 2>&1; then
+    echo "bridge not activated, please do so" >&2
+    nmcli con up "$CON_NAME"
 fi
 
 # NEW METHOD ON WIRED:
