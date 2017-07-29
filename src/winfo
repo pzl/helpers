@@ -24,3 +24,6 @@
 
 ID=$(xwininfo | grep -Po "0x[\da-f]+" -m1)
 xwinfo -cints $ID
+
+#and role
+xprop -id "$ID" '=$0' WM_WINDOW_ROLE | grep = | cut -d= -f2 | tr -d '"'
