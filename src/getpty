@@ -1,9 +1,17 @@
 #!/bin/bash
 
+
 ARG="$1"
 
-if [[ $ARG == 0x* ]]; then
-    ARG="$(xprop -id "$1" '=$0' _NET_WM_PID | cut -d= -f2)"
+if [ -z "$ARG" ]; then
+    ARG=$(xwininfo | grep -Po "0x[\da-f]+" -m1)
 fi
 
+if [[ $ARG == 0x* ]]; then
+    ARG="$(xprop -id "$ARG" '=$0' _NET_WM_PID | cut -d= -f2)"
+fi
+
+
 echo "/dev/$(ps h --ppid $ARG -o tty)"
+
+set +x
