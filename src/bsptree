@@ -1,0 +1,71 @@
+#!/usr/bin/env python
+
+import os
+import sys
+import json
+from collections import deque
+
+def read_tree():
+	input_tree = sys.stdin.read()
+	tree = json.loads(input_tree)
+	if 'focusHistory' in tree:
+		del tree['focusHistory'] #save a little memory
+	return tree
+
+
+def node_depth(node,depth=0):
+	if node['client']: return depth
+	return max(node_depth(node['firstChild'],depth+1),node_depth(node['secondChild'],depth+1))
+def tree_depth(tree):
+	return node_depth(tree['root'])
+
+
+
+
+def print_tree(tree):
+	maxdepth = tree_depth(tree)
+	nodes=[[]]
+	curdepth=0
+	q = deque()
+	q.appendleft(tree['root'])
+	q.appendleft(None)
+
+	while q:
+		current = q.pop()
+		if current is None:
+			curdepth+=1
+			nodes.append([])
+			q.appendleft(None)
+			if q[-1] == None:
+				nodes.pop()
+				break # two None's is the end of the line
+		elif current == -1:
+			nodes[curdepth].append(" ")
+			if curdepth < maxdepth:
+				q.appendleft(-1)
+				q.appendleft(-1)
+		elif current['client']:
+			nodes[curdepth].append("*")
+			if curdepth < maxdepth:
+				q.appendleft(-1)
+				q.appendleft(-1)
+		else:
+			nodes[curdepth].append(current['splitType'][0])
+			q.appendleft(current['firstChild'])
+			q.appendleft(current['secondChild'])
+
+	for curdepth,row in enumerate(nodes):
+		print(" "*(2**(maxdepth-curdepth)-1),end="")
+		for n in row:
+			print(n+" "*( 2**(maxdepth-curdepth+1)-1),end="")
+		print("")
+
+def main():
+	tree = read_tree()
+	print_tree(tree)
+
+
+
+
+if __name__ == "__main__":
+	main()
