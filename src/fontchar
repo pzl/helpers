@@ -1,0 +1,8 @@
+#!/bin/bash
+
+# credit:
+# https://repolinux.wordpress.com/2013/03/10/find-out-fallback-font-used-by-fontconfig-for-a-certain-character/
+
+# changed to add -q flag to not show gui, and removed tail to show full try-list, pared down with uniq
+
+FC_DEBUG=4 pango-view -t "$1" -q 2>&1 | grep -o 'family: "[^"]\+' | cut -c 10- | uniq
