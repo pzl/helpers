@@ -80,7 +80,7 @@ mnt
 basically an alias script because I can never remember the flags and order to pass to `mount`, especially when assigning user rights flags on ntfs.
 
 
-pixelate_windows
+pixelate\_windows
 ----------------
 
 Will pixelate your open X11 windows based on a screenshot of the current state. Produces an image where the background is untouched, windows are obscured. Based on py3lock.py by Airblader
@@ -102,10 +102,15 @@ sub
 
 A small wrapper around sublime text to open normally when called the first time, but to spawn new windows when called anytime after that. The default sublime behavior when being called when already open is to just highlight the open window, instead of opening a new window.
 
-tiling_rules
+tiling\_rules
 ------------
 
 This is just the behavioral rules for my window manager; which windows should float vs. tile by default.
+
+wacom
+-----
+
+userland driver for quick button remapping and orientation changing for wacom intuous pro drawing tablet
 
 webcam
 ------

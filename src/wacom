@@ -1,0 +1,124 @@
+#!/usr/bin/env python
+
+import sys
+import os
+import re
+from itertools import chain
+import subprocess
+
+usage="""
+wacom [command] [arguments]
+Commands:
+	screen <Number>:
+		set tabled to screen number *Number*
+	dual:
+		map tablet across both screens
+	flip [DIR]:
+		rotate the tablet mapping 180 degrees. or, optionally, to DIR (0,90,180,270)
+	help:
+		display this text
+	remap:
+		map the buttons
+
+if command is omitted, normal setup is ran, equivalent to `remap` and `screen 0`
+
+"""
+
+#	t | toggle:
+#		toggle which screen the tablet is connected to
+
+def get_devices():
+	devices={}
+	result = subprocess.run(["xsetwacom","list","devices"],stdout=subprocess.PIPE)
+	output = result.stdout.decode("utf-8").split("\n")
+	for line in output:
+		match = re.search(r'id:\s*(\d+)\s*type:\s*(\w+)',line,re.I)
+		if not match: continue
+		devices[match.group(2)] = match.group(1)
+
+	return devices
+
+
+def screen(devices,monitor):
+	for device in ('STYLUS','ERASER','CURSOR'):
+		subprocess.run(["xsetwacom","set",devices[device],"MapToOutput","HEAD-%d"%(monitor,)])
+
+
+def flip(devices,rot=None):
+	if rot:
+		rot = int(rot)
+		if rot%90 != 0 or rot<0 or rot > 270:
+			invalid("invalid rotation, must be 0,90,180,270")
+		if rot==0:
+			rotation="none"
+		elif rot==90:
+			rotation="cw"
+		elif rot==270:
+			rotation="ccw"
+		else:
+			rotation="half"
+	else:
+		rotation="none"
+		result = subprocess.run(["xsetwacom","get",devices['STYLUS'],"rotate"],stdout=subprocess.PIPE)
+		output = result.stdout.decode('utf-8')
+		if output.lower().strip() == "none":
+			rotation="half"
+
+	subprocess.run(["xsetwacom","set",devices['STYLUS'],"rotate",rotation])
+	"""xsetwacom man page: Rotation is a tablet-wide option:
+		rotation of one tool affects all other tools associated  with  the  same  tablet.
+		When  the tablet is physically rotated,
+		rotate any tool to the corresponding orientation."""
+
+
+def dual(devices):
+	for device in ('STYLUS','ERASER','CURSOR'):
+		subprocess.run(["xsetwacom","set",devices[device],"MapToOutput","3840x1080+0+0"])	
+
+
+def remap(devices):
+	start_button=10
+	for i in chain(range(1,4),range(8,14)):
+		subprocess.run(["xsetwacom","set",devices["PAD"],"Button",str(i),"button +"+str(start_button)])
+		start_button+=1
+
+	# Alternatively: https://unix.stackexchange.com/questions/38195/can-i-xmodmap-only-a-specific-device
+
+
+
+def main():
+	command = ""
+	if len(sys.argv) > 1: command = sys.argv[1].lower()
+	if (command == "screen" or command == "s") and len(sys.argv) < 3:
+		invalid("screen number is required")
+
+	if command == "help":
+		print(usage)
+		return
+
+	devices = get_devices()
+	
+	if command == "screen" or command == "s":
+		screen(devices,int(sys.argv[2]))
+	elif command == "flip":
+		if len(sys.argv) > 2:
+			flip(devices,sys.argv[2])
+		else:
+			flip(devices)
+	elif command == "dual":
+		dual(devices)
+	elif command == 'remap':
+		remap(devices)
+	else:
+		remap(devices)
+		screen(devices,0)
+
+
+
+def invalid(message):
+	print(message,file=sys.stderr)
+	print(usage,file=sys.stderr)
+	sys.exit(1)
+
+if __name__ == "__main__":
+	main()
