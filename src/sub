@@ -23,18 +23,11 @@
 # THE SOFTWARE. 
 
 
-VERSION=${1:-3}
-BIN="subl"
-
-if [ "$VERSION" -ne "2" ]; then
-    BIN="${BIN}3"
-fi
-
-FIND=$(ps aux | grep -E "\b${BIN}\b" | grep -v grep)
+FIND=$(ps aux | grep -E 'sublime_text$' | grep -v grep)
 RUNNING=$?
 
 if [ $RUNNING -eq 0 ]; then
-    $BIN -n
+    subl -n
 else
-    $BIN
+    subl
 fi
