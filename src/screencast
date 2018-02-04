@@ -1,4 +1,10 @@
 #!/bin/bash
 
-ffmpeg -f x11grab -s 1920x1080 -r 24 -i $DISPLAY -f alsa -i default -c:v libx264 -b:a 200k -y "cast-$(date +"%F-%I-%M-%s").mkv"
+area="-s 1920x1080 -i ${DISPLAY}"
+if [[ $# -ge 1 && "$1" == "-s" ]]; then
+  read -r X Y W H G ID < <(slop -b 2.2 -f "%x %y %w %h %g %i")
+  area="-s ${W}x${H} -i ${DISPLAY}+$X,$Y"
+fi
+
+ffmpeg -f x11grab -r 24 $area -f alsa -i default -c:v libx264 -b:a 200k -y "cast-$(date +"%F-%I-%M-%s").mkv"
 #ffmpeg -f x11grab -s 1920x1080 -r 24 -i $DISPLAY -f alsa -i default -c:v libx265 -preset medium -x265-params crf=28 -strict experimental -b:a 200k "cast-265.mkv"
