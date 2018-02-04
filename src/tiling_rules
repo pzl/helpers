@@ -38,7 +38,7 @@ RULE=()
 case "$TYPE" in
 	dock|desktop|notification)	RULE+=("manage=off") ;;
 	toolbar|utility)			RULE+=("focus=off") ;;
-	desktop)					RULE+=("layer=below") ;;
+	#desktop)					RULE+=("layer=below") ;;
 esac
 
 for s in $STATE; do
@@ -57,20 +57,16 @@ esac
 
 #custom rules
 case "$INST" in
-	Google-chrome*|google-chrome*|nitrogen|gimp*|ruler|gbdfed|zoom|simulator.exe|pinentry*)
+    stalonetray|gcr-prompter|pinentry*|gimp*|ruler|zoom)
+        RULE+=("layer=above") ;&
+	Google-chrome*|google-chrome*|nitrogen|gbdfed|zoom|simulator.exe|gtk.py|pdfpc|libovg|slack-notif)
 		RULE+=("state=floating") ;;
 	BSPWM_FRAME|bspwm_frame)
 		RULE+=("frame=on") ;;
     xmessage|tint2)
         RULE+=("manage=off") ;;
-    blue)
-        RULE+=("state=floating") ;;
     Blender)
         RULE+=("locked=on") ;; #prevent accidental closing
-    stalonetray)
-        RULE+=("state=floating")
-        RULE+=("layer=above")
-        ;;
 esac
 
 case "$ROLE" in
@@ -83,7 +79,11 @@ case "$ROLE" in
         ;;
 esac
 
+
+
+
 # Debug:
-#echo -e "got ID: <$1> class <$2> instance <$3> and read -its as\ninst:<$INST>\ntype:<$TYPE>\nstate:<$STATE>\nname:<$NAME>\nrole:<$ROLE>\n and then gave as output: ${RULE[*]}"
+#echo -e "got ID: <$1> and read -cints as\n\tclass: <$2>\n\tinst: <$INST>\n\tname: <$NAME>\n\ttype: <$TYPE>\n\tstate: <$STATE>\n\trole: <$ROLE>\n\tand then gave as output: ${RULE[*]}" >> /tmp/rules.log
+
 
 echo "${RULE[*]}"
