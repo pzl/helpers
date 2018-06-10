@@ -29,10 +29,6 @@ import json
 import random
 import time
 
-config = open('~/.config/colorconfig')
-js = json.load(config)
-config.close()
-
 esc="\033]"
 bel="\007"
 osc="{esc}{{Ps}};{{Pt}}{bel}".format(esc=esc,bel=bel)
@@ -83,6 +79,14 @@ def party():
 		time.sleep(0.05)
 
 if __name__ == '__main__':
+	if len(sys.argv) == 2 and sys.argv[1].lower() == 'party':
+		party()
+		exit(0)
+	config = open('~/.config/colorconfig')
+	js = json.load(config)
+	config.close()
+
+
 	theme = 'default'
 	if len(sys.argv) > 1:
 		if sys.argv[1].lower() == 'list':
