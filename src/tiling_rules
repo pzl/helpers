@@ -38,6 +38,7 @@ RULE=()
 case "$TYPE" in
 	dock|desktop|notification)	RULE+=("manage=off") ;;
 	toolbar|utility)			RULE+=("focus=off") ;;
+  dialog)           RULE+=("layer=above") ;;
 	#desktop)					RULE+=("layer=below") ;;
 esac
 
@@ -53,12 +54,15 @@ done
 case "$NAME" in
     'Poly Bridge'|'Unturned 3'|RaceTheSun|Broforce|'TowerFall Ascension'|'ShellShock Live')
         RULE+=("state=fullscreen") ;;
+    ImageMagick*|QuickNotes)
+      RULE+=("state=floating");; # python PIL.Image.show() uses imagemagick for preview
 esac
 
 #custom rules
 case "$INST" in
     stalonetray|gcr-prompter|pinentry*|gimp*|ruler|zoom)
-        RULE+=("layer=above") ;&
+      RULE+=("state=floating")
+        RULE+=("layer=above") ;;
 	Google-chrome*|google-chrome*|nitrogen|gbdfed|zoom|simulator.exe|gtk.py|pdfpc|libovg|slack-notif)
 		RULE+=("state=floating") ;;
 	BSPWM_FRAME|bspwm_frame)
