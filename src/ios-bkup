@@ -22,17 +22,19 @@
 # THE SOFTWARE. 
 
 
+$BACKUP_PATH=/run/media/dan/MrT/iphone-backups
 IBACKUP=$( command -v idevicebackup2 )
 if [ $? -ne 0 ]; then
     echo >&2 "idevicebackup2 is required, but was not found. Please install libimobiledevice"
     exit 1
 fi
 
-
-if ! mountpoint /run/media/dan/MrT >/dev/null 2>&1; then
-    echo >&2 "MrT drive must be mounted first"
-    exit 1
-fi
+# If you keep getting device not found, try manually starting usbmuxd with the phone already plugged in, with:
+# sudo usbmuxd -f -v
+# in another terminal, and trying this again with that running.
 
 
-$IBACKUP backup --full /run/media/dan/MrT/iphone-backups
+$IBACKUP backup --full $BACKUP_PATH
+
+#restore
+#$IBACKUP --source <UDID> restore --system --settings --reboot $BACKUP_PATH
