@@ -1,0 +1,9 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+    echo "need size" >&2
+    exit 1
+fi
+
+gsettings set org.gnome.desktop.interface cursor-size "$1"
+xsetroot -xcf /usr/share/icons/Vanilla-DMZ/cursors/left_ptr "$1"
