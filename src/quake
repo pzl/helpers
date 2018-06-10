@@ -6,11 +6,13 @@ main(){
 
     if [ -n "$wid" ]; then
         if xwininfo -id $wid | grep "Map State: IsUnMapped" >/dev/null 2>&1; then
-            xdo move -x 0 -y 0 $wid
-            xdo resize -w 1920 -h 300 $wid
-            bspc node $wid -g hidden -m pointed -f
+            xdotool windowmap --sync $wid
+            #xdo move -x 0 -y 0 $wid
+            #xdo resize -w 1920 -h 300 $wid
+            #bspc node $wid -g hidden -m pointed -f
         else
-            bspc node $wid -g hidden
+            #bspc node $wid -g hidden
+            xdotool windowunmap $wid
         fi
     else
         terminator -r quake -l quake 
