@@ -22,7 +22,7 @@
 # THE SOFTWARE. 
 
 
-$BACKUP_PATH=/run/media/dan/MrT/iphone-backups
+BACKUP_PATH=/run/media/dan/MrT/iphone-backups
 IBACKUP=$( command -v idevicebackup2 )
 if [ $? -ne 0 ]; then
     echo >&2 "idevicebackup2 is required, but was not found. Please install libimobiledevice"
@@ -37,4 +37,4 @@ fi
 $IBACKUP backup --full $BACKUP_PATH
 
 #restore
-#$IBACKUP --source <UDID> restore --system --settings --reboot $BACKUP_PATH
+#$IBACKUP --source <UDID> restore --system --settings --reboot -i $BACKUP_PATH
