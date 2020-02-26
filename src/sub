@@ -23,7 +23,7 @@
 # THE SOFTWARE. 
 
 
-FIND=$(ps aux | grep -E 'sublime_text$' | grep -v grep)
+FIND=$(ps aux | grep '/opt/sublime_text/sublime_text' | grep -v grep)
 RUNNING=$?
 
 if [ $RUNNING -eq 0 ]; then
