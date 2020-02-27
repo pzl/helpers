@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# https://ubuntuforums.org/showthread.php?t=2361781
+gnome-keyring-daemon --replace --daemonize --components=secrets,pcks11
