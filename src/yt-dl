@@ -1,0 +1,4 @@
+#!/bin/bash
+
+ youtube-dl --write-annotations --download-archive .archive --add-metadata --write-info-json --write-thumbnail -f bestvideo[ext=vp9]+bestaudio[ext=opus]/bestvideo+bestaudio --merge-output-format mkv --all-subs --embed-subs -i --embed-thumbnail -o '%(uploader)s/%(playlist)s/%(upload_date)s - %(title)s.%(ext)s' "$1"
+
