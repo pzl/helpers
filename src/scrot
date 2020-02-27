@@ -1,0 +1,3 @@
+#!/bin/bash
+
+maim $@ $(date +'%F-%H%M%S'_scrot.png)
