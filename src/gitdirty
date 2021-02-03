@@ -1,0 +1,26 @@
+#!/bin/bash
+
+
+fd -H -0 --type d -g .git | while read -d $'\0' gitdir; do
+  d="$(dirname "$gitdir")"
+  if [ "$(git -C "$d" rev-parse --is-bare-repository 2>/dev/null)" == "true" ]; then
+    echo "${d} is a bare repo"
+    continue
+  fi
+  if ! git -C "$d" cat-file -t HEAD >/dev/null 2>&1; then
+    echo "${d} has no commits"
+    continue
+  fi
+  if git -C "$d" cherry >/dev/null 2>&1; then
+    UNPUSHED="$(git -C "$d" cherry | wc -l)"
+    if [ "$UNPUSHED" != "0" ]; then
+      echo -e "\x1b[31m${d}\x1b[0m has \x1b[35m${UNPUSHED} unpushed\x1b[0m commits"
+    fi
+  else
+    echo "current branch in ${d} does not have an upstream"
+  fi
+  if [ -n "$(git -C "$d" status --porcelain)" ]; then
+    echo -e "\x1b[33m${d}\x1b[0m has \x1b[31mUncommitted\x1b[0m changes"
+  fi
+  
+done

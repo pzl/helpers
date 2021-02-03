@@ -27,6 +27,11 @@ fontview
 
 A shorthand script for passing the name of an installed font, and viewing it's charmap (XLFD not XFT). Use like: `fontview terminus`
 
+gitdirty
+--------
+
+finds any `git` repos relative to where you are, and prints if any have uncommitted changes, or unpushed changes, etc. The tool is sloppy, but it helps you do some digital cleanup, and make sure everything is synced and pushed
+
 
 gdate
 ----
