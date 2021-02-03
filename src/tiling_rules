@@ -21,6 +21,16 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE. 
 
+set -e
+
+cleanup() {
+  set +e
+  status=$?
+  echo "$(date -Is): <> tiling_rules failure?" >> /var/log/tiling_rules.log
+  trap - INT TERM
+  exit "$status"
+}
+trap cleanup INT TERM
 
 readonly ID="$1"
 readarray -t PROPS < <(xwinfo -cints "$ID")
