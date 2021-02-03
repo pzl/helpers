@@ -1,0 +1,14 @@
+#!/bin/bash
+
+set -Eeuo pipefail
+
+trap cleanup INT TERM ERR EXIT
+
+CHROME_USER_DIR="$(mktemp -d chrome-user-XXXXX)"
+
+cleanup() {
+  trap - INT TERM ERR EXIT
+  [ -n "$CHROME_USER_DIR" ] && rm -rf "$CHROME_USER_DIR"
+}
+
+google-chrome-stable --user-data-dir="$CHROME_USER_DIR" --no-first-run --no-default-browser-check --disable-default-apps --disable-dev-shm-usage ----disable-background-networking $@

@@ -79,18 +79,23 @@ mnt
 
 basically an alias script because I can never remember the flags and order to pass to `mount`, especially when assigning user rights flags on ntfs.
 
+notif-fix
+---------
+
+I think this had something to do with either notify-send or Chrome desktop notifications appearing in the wrong corner of my desktop, and I was trying to move them back. Not sure.
+
+
+newchrome
+---------
+
+Simple script to launch a chrome instance **disconnected** from your primary one. Gives you a blank-slate ephemeral browser. No history, bookmarks, extensions, etc.
+
 
 pixelate\_windows
 ----------------
 
 Will pixelate your open X11 windows based on a screenshot of the current state. Produces an image where the background is untouched, windows are obscured. Based on py3lock.py by Airblader
 
-
-
-notif-fix
----------
-
-I think this had something to do with either notify-send or Chrome desktop notifications appearing in the wrong corner of my desktop, and I was trying to move them back. Not sure.
 
 sc
 ---
@@ -121,7 +126,6 @@ winfo
 -----
 
 Call this script then click on an X window to view some of it's properties (class, instance, title, type, state)
-
 
 License
 =======
